@@ -370,7 +370,7 @@ export default function App() {
               {/* Interactive Scene Progress Scrubber */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span>
+                  <span className="border-[#faf406] bg-[#f6f607] text-[14px] font-bold">
                     Escena {sceneIndex + 1} de {flatScenes.length}
                   </span>
                   <span>
