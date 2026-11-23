@@ -86,21 +86,21 @@ export const VideoStage: React.FC<VideoStageProps> = ({
   return (
     <div className="relative w-full bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
       {/* Top Stage Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/70">
-        <div className="flex items-center gap-3 text-sm text-slate-600">
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 bg-slate-50/70">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-slate-600">
           <span className="font-semibold text-slate-900">
             Capítulo {chapterNumber}. {chapterTitle}
           </span>
           <span aria-hidden="true">·</span>
           <span>{activityRef}</span>
         </div>
-        <div className="text-sm font-medium text-blue-700">
+        <div className="text-xs sm:text-sm font-medium text-blue-700">
           {PHASE_LABELS[scene.phase]}
         </div>
       </div>
 
       {/* Main Accessible Stage Canvas */}
-      <div className="min-h-[430px] md:min-h-[480px] px-6 py-7 md:px-10 md:py-8 flex flex-col justify-between bg-white">
+      <div className="min-h-[320px] sm:min-h-[420px] md:min-h-[480px] px-4 py-5 sm:px-6 sm:py-7 md:px-10 md:py-8 flex flex-col justify-between bg-white">
         <AnimatePresence mode="wait">
           <motion.div
             key={scene.id}
@@ -108,35 +108,35 @@ export const VideoStage: React.FC<VideoStageProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="flex-1 flex flex-col justify-between gap-6"
+            className="flex-1 flex flex-col justify-between gap-5 sm:gap-6"
           >
             {/* Scene Title, Key Takeaway & Active Spotlight Indicator */}
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-2 max-w-3xl">
-                <h2 className="font-display text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+            <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+              <div className="space-y-1.5 sm:space-y-2 max-w-3xl">
+                <h2 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
                   {scene.headline}
                 </h2>
-                <p className="text-base md:text-lg text-slate-700 leading-relaxed">
+                <p className="text-sm sm:text-base md:text-lg text-slate-700 leading-relaxed">
                   {scene.keyMessage}
                 </p>
               </div>
               {activeLabel && (
-                <div className="text-xs md:text-sm font-semibold text-slate-800 bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 shrink-0">
+                <div className="text-xs sm:text-sm font-semibold text-slate-800 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 shrink-0">
                   {activeLabel}
                 </div>
               )}
             </div>
 
             {/* Central Visual Diagram Area */}
-            <div className="flex-1 flex items-center justify-center py-2">
+            <div className="flex-1 flex items-center justify-center py-1 sm:py-2">
               <DiagramRenderer scene={scene} highlightTarget={activeTarget} />
             </div>
 
             {/* Supportive Reassurance Line */}
             {scene.supportPhrase && (
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
+              <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-slate-500">
                 <span>{scene.supportPhrase}</span>
-                <span>Observá con calma</span>
+                <span className="hidden sm:inline">Observá con calma</span>
               </div>
             )}
           </motion.div>
@@ -145,8 +145,8 @@ export const VideoStage: React.FC<VideoStageProps> = ({
 
       {/* Calm High-Contrast Subtitle Strip with Live Sentence Tracking */}
       {showSubtitles && (
-        <div className="px-6 py-4 bg-slate-900 text-slate-50 border-t border-slate-800">
-          <p className="text-base md:text-[17px] leading-relaxed text-center max-w-4xl mx-auto tracking-wide">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-slate-900 text-slate-50 border-t border-slate-800">
+          <p className="text-sm sm:text-base md:text-[17px] leading-relaxed text-center max-w-4xl mx-auto tracking-wide">
             {cues.map((cue, idx) => {
               const isActive = (isPlaying || narrationProgress > 0) && idx === activeCueIdx;
               return (
@@ -198,11 +198,11 @@ const DiagramRenderer: React.FC<{
       };
 
       return (
-        <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
           <div className="flex flex-col items-center gap-3">
             <svg
               viewBox="0 0 200 200"
-              className={`w-52 h-52 transition-transform duration-300 ${
+              className={`w-40 h-40 sm:w-52 sm:h-52 transition-transform duration-300 ${
                 hiNum || hiDen ? 'scale-105' : ''
               }`}
               role="img"
@@ -232,18 +232,18 @@ const DiagramRenderer: React.FC<{
                 );
               })}
             </svg>
-            <span className="text-sm text-slate-600 font-medium">{diagram.caption}</span>
+            <span className="text-xs sm:text-sm text-slate-600 font-medium text-center">{diagram.caption}</span>
           </div>
 
-          <div className="flex flex-col gap-5 items-start">
-            <div className="flex items-center gap-5">
+          <div className="flex flex-col gap-4 sm:gap-5 items-center sm:items-start">
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5">
               <FractionBox
                 num={String(diagram.slices)}
                 den={String(diagram.total)}
                 size="xl"
                 highlightTarget={highlightTarget}
               />
-              <div className="space-y-3 text-base">
+              <div className="space-y-2.5 sm:space-y-3 text-sm sm:text-base">
                 <div
                   className={`flex items-center gap-2 p-2 rounded-lg transition-transform duration-300 ${
                     hiNum ? 'scale-105 bg-blue-50 ring-2 ring-blue-300' : ''
@@ -771,11 +771,11 @@ const DiagramRenderer: React.FC<{
       const hiExp = highlightTarget === 'exp';
 
       return (
-        <div className="w-full max-w-3xl flex flex-col items-center gap-6">
-          <div className="flex items-baseline justify-center gap-2 px-10 py-7 rounded-2xl bg-slate-50 border border-slate-200">
+        <div className="w-full max-w-3xl flex flex-col items-center gap-5 sm:gap-6">
+          <div className="flex items-baseline justify-center gap-1.5 sm:gap-2 px-5 py-5 sm:px-10 sm:py-7 rounded-2xl bg-slate-50 border border-slate-200 max-w-full overflow-x-auto">
             {diagram.sign && (
               <span
-                className={`inline-block font-math text-6xl font-bold text-red-600 mr-1 transition-transform duration-300 ${
+                className={`inline-block font-math text-4xl sm:text-5xl md:text-6xl font-bold text-red-600 mr-1 transition-transform duration-300 ${
                   hiNeg ? 'scale-125 bg-red-100 ring-4 ring-red-300 rounded-xl px-2' : ''
                 }`}
               >
@@ -783,18 +783,18 @@ const DiagramRenderer: React.FC<{
               </span>
             )}
             <span
-              className={`inline-block font-math text-6xl font-bold text-blue-700 transition-transform duration-300 ${
-                hiNum ? 'scale-125 bg-blue-100 ring-4 ring-blue-300 rounded-xl px-3' : ''
+              className={`inline-block font-math text-4xl sm:text-5xl md:text-6xl font-bold text-blue-700 transition-transform duration-300 ${
+                hiNum ? 'scale-125 bg-blue-100 ring-4 ring-blue-300 rounded-xl px-2 sm:px-3' : ''
               }`}
             >
               {diagram.coeff}
             </span>
             {diagram.vars.map((v, idx) => (
-              <span key={idx} className="inline-flex items-start ml-1">
+              <span key={idx} className="inline-flex items-start ml-0.5 sm:ml-1">
                 <span
-                  className={`inline-block font-math text-6xl font-bold italic text-emerald-700 transition-transform duration-300 ${
+                  className={`inline-block font-math text-4xl sm:text-5xl md:text-6xl font-bold italic text-emerald-700 transition-transform duration-300 ${
                     hiVar
-                      ? 'scale-125 bg-emerald-100 ring-4 ring-emerald-300 rounded-xl px-3 not-italic'
+                      ? 'scale-125 bg-emerald-100 ring-4 ring-emerald-300 rounded-xl px-2 sm:px-3 not-italic'
                       : ''
                   }`}
                 >
@@ -802,8 +802,8 @@ const DiagramRenderer: React.FC<{
                 </span>
                 {v.exp && (
                   <span
-                    className={`inline-block font-math text-3xl font-bold text-orange-600 -mt-1 ml-1 transition-transform duration-300 ${
-                      hiExp ? 'scale-150 bg-orange-100 ring-4 ring-orange-300 rounded-lg px-2' : ''
+                    className={`inline-block font-math text-xl sm:text-2xl md:text-3xl font-bold text-orange-600 -mt-1 ml-0.5 sm:ml-1 transition-transform duration-300 ${
+                      hiExp ? 'scale-150 bg-orange-100 ring-4 ring-orange-300 rounded-lg px-1.5 sm:px-2' : ''
                     }`}
                   >
                     {v.exp}
@@ -1107,7 +1107,7 @@ const DiagramRenderer: React.FC<{
     case 'rectangle-area': {
       const hiArea = highlightTarget === 'area';
       return (
-        <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
           <div className="flex flex-col items-center">
             <div className="mb-2">
               <ColorMath
@@ -1116,7 +1116,7 @@ const DiagramRenderer: React.FC<{
                 highlightTarget={highlightTarget}
               />
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <div>
                 <ColorMath
                   expr={diagram.heightLabel}
@@ -1125,11 +1125,11 @@ const DiagramRenderer: React.FC<{
                 />
               </div>
               <div
-                className={`w-60 h-36 rounded-xl bg-blue-50 border-2 border-blue-600 flex flex-col items-center justify-center gap-1 transition-transform duration-300 ${
+                className={`w-48 sm:w-60 h-32 sm:h-36 rounded-xl bg-blue-50 border-2 border-blue-600 flex flex-col items-center justify-center gap-1 transition-transform duration-300 ${
                   hiArea ? 'scale-105 ring-4 ring-blue-300' : ''
                 }`}
               >
-                <span className="text-sm font-medium text-slate-600">Área</span>
+                <span className="text-xs sm:text-sm font-medium text-slate-600">Área</span>
                 {diagram.showResult && (
                   <ColorMath
                     expr={diagram.areaLabel}
@@ -1142,7 +1142,7 @@ const DiagramRenderer: React.FC<{
           </div>
 
           <div
-            className={`space-y-3 p-5 rounded-xl bg-slate-50 border border-slate-200 transition-transform duration-300 ${
+            className={`space-y-3 p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200 transition-transform duration-300 ${
               hiArea ? 'scale-105 ring-2 ring-blue-300' : ''
             }`}
           >
@@ -1173,8 +1173,8 @@ const DiagramRenderer: React.FC<{
 
     case 'steps-board': {
       return (
-        <div className="w-full max-w-3xl space-y-2.5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+        <div className="w-full max-w-3xl space-y-2 sm:space-y-2.5">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 sm:mb-2">
             {diagram.exerciseTag}
           </div>
           {diagram.lines.map((line, idx) => (
@@ -1183,15 +1183,15 @@ const DiagramRenderer: React.FC<{
               initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border ${
+              className={`flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-1.5 sm:gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl border ${
                 line.focus
                   ? 'bg-blue-50/70 border-blue-200'
                   : 'bg-slate-50/70 border-slate-200'
               }`}
             >
-              <div className="flex flex-wrap items-baseline gap-3">
+              <div className="flex flex-wrap items-baseline gap-2 sm:gap-3 min-w-0">
                 {line.label && (
-                  <span className="font-semibold text-slate-700 min-w-[3.2rem]">
+                  <span className="font-semibold text-xs sm:text-sm text-slate-700 min-w-[2.4rem] sm:min-w-[3.2rem] shrink-0">
                     {line.label}
                   </span>
                 )}
@@ -1202,7 +1202,7 @@ const DiagramRenderer: React.FC<{
                 />
               </div>
               {line.note && (
-                <span className="text-xs md:text-sm text-slate-600">{line.note}</span>
+                <span className="text-xs sm:text-sm text-slate-600">{line.note}</span>
               )}
             </motion.div>
           ))}
@@ -1315,8 +1315,8 @@ const PracticeChallengeView: React.FC<{
   };
 
   return (
-    <div className="w-full max-w-3xl space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4 p-5 rounded-xl bg-slate-50 border border-slate-200">
+    <div className="w-full max-w-3xl space-y-4 sm:space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-blue-700 mb-1">
             Pausa para pensar
@@ -1328,29 +1328,29 @@ const PracticeChallengeView: React.FC<{
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm font-math text-slate-700">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg bg-white border border-slate-200 text-sm font-math text-slate-700">
             <Clock className="w-4 h-4 text-blue-600" />
             <span>{secondsLeft}s</span>
           </div>
           <button
             type="button"
             onClick={() => setTimerPaused((p) => !p)}
-            className="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
+            className="px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
           >
             {timerPaused ? 'Reanudar reloj' : 'Pausar reloj'}
           </button>
           <button
             type="button"
             onClick={() => setSecondsLeft((s) => s + 10)}
-            className="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
+            className="px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
           >
             +10s
           </button>
         </div>
       </div>
 
-      <p className="text-base font-medium text-slate-800">{diagram.question}</p>
+      <p className="text-sm sm:text-base font-medium text-slate-800">{diagram.question}</p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {diagram.options.map((opt) => {
@@ -1367,7 +1367,7 @@ const PracticeChallengeView: React.FC<{
               key={opt.id}
               type="button"
               onClick={() => handleSelect(opt)}
-              className={`p-4 rounded-xl border-2 text-left transition-colors cursor-pointer min-h-[56px] ${style}`}
+              className={`p-3.5 sm:p-4 rounded-xl border-2 text-left transition-colors cursor-pointer min-h-[56px] ${style}`}
             >
               <ColorMath
                 expr={opt.label}
@@ -1391,11 +1391,11 @@ const PracticeChallengeView: React.FC<{
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={() => setShowHint((h) => !h)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
         >
           <HelpCircle className="w-4 h-4 text-blue-600" />
           <span>{showHint ? 'Ocultar pista' : 'Ver una pista'}</span>
@@ -1404,7 +1404,7 @@ const PracticeChallengeView: React.FC<{
         <button
           type="button"
           onClick={() => setShowSolution((s) => !s)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium whitespace-nowrap shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium whitespace-nowrap shrink-0 cursor-pointer"
         >
           {showSolution ? (
             <>

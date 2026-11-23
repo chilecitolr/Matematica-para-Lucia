@@ -168,6 +168,47 @@ export const VIDEO_2_CHAPTERS: Chapter[] = [
         },
       },
       {
+        id: 'c4-s3b',
+        phase: 'paso',
+        headline: 'Paso a paso · Actividad 4e: √(144/169)',
+        keyMessage: 'Calculamos la raíz cuadrada de 144 arriba y la raíz cuadrada de 169 abajo por separado.',
+        narration:
+          'Vamos despacio con el ejercicio e de la Actividad 4: raíz cuadrada de ciento cuarenta y cuatro sobre ciento sesenta y nueve. Aunque los números sean un poco más grandes, la regla es la misma: buscamos la raíz del número de arriba y la del número de abajo por separado. Arriba tenemos ciento cuarenta y cuatro. ¿Qué número multiplicado por sí mismo da ciento cuarenta y cuatro? Probamos: diez por diez es cien, once por once ciento veintiuno, doce por doce ciento cuarenta y cuatro. Así que la raíz de arriba es doce. Abajo tenemos ciento sesenta y nueve. Trece por trece es ciento sesenta y nueve. Así que la raíz de abajo es trece. El resultado es doce treceavos. Comprobamos multiplicando doce treceavos por doce treceavos y nos da exactamente ciento cuarenta y cuatro sobre ciento sesenta y nueve.',
+        durationSeconds: 18,
+        supportPhrase: 'Un paso a la vez · Probamos multiplicando',
+        diagram: {
+          type: 'steps-board',
+          exerciseTag: 'Actividad 4e · Paso a paso',
+          lines: [
+            { label: 'Ejercicio', math: '√(144/169)', note: 'Raíz arriba y raíz abajo' },
+            { label: 'Arriba', math: '√144 = 12', note: 'Porque 12 × 12 = 144' },
+            { label: 'Abajo', math: '√169 = 13', note: 'Porque 13 × 13 = 169' },
+            { label: 'Resultado', math: '12/13', focus: true, note: 'Comprobación: 12/13 × 12/13 = 144/169' },
+          ],
+        },
+      },
+      {
+        id: 'c4-s3c',
+        phase: 'resultado',
+        headline: 'Paso a paso · Actividad 4f: √(49/64) + ∛(−8/27)',
+        keyMessage: 'Resolvemos cada raíz por separado, respetamos el signo negativo de la raíz cúbica y sumamos con denominador 24.',
+        narration:
+          'Ahora miremos el ejercicio f de la Actividad 4, que combina dos raíces: raíz cuadrada de cuarenta y nueve sobre sesenta y cuatro, más raíz cúbica de menos ocho veintisieteavos. Primero calculamos la primera raíz: raíz de cuarenta y nueve es siete, y raíz de sesenta y cuatro es ocho, así que da siete octavos. Segundo, vamos con la raíz cúbica de menos ocho sobre veintisiete. Como el índice es tres y adentro es negativo, el resultado sigue siendo negativo. Dos por dos por dos da ocho, y tres por tres por tres da veintisiete. Entonces nos queda menos dos tercios. Ahora juntamos los dos resultados: siete octavos más menos dos tercios, que es lo mismo que siete octavos menos dos tercios. Buscamos denominador común entre ocho y tres: ocho por tres veinticuatro. Siete octavos pasa a veintiún veinticuatroavos, y dos tercios pasa a dieciséis veinticuatroavos. Restamos veintiuno menos dieciséis y nos da cinco veinticuatroavos.',
+        durationSeconds: 21,
+        supportPhrase: 'Cada raíz primero · Al final denominador común 24',
+        diagram: {
+          type: 'steps-board',
+          exerciseTag: 'Actividad 4f · Paso a paso',
+          lines: [
+            { label: 'Raíz 1', math: '√(49/64) = 7/8', note: '7×7=49 y 8×8=64' },
+            { label: 'Raíz 2', math: '∛(-8/27) = -2/3', note: 'Raíz cúbica negativa sigue −' },
+            { label: 'Juntamos', math: '7/8 + (-2/3) = 7/8 - 2/3', note: 'Más por menos queda menos' },
+            { label: 'Común 24', math: '21/24 - 16/24', note: '7/8 ×3 y 2/3 ×8' },
+            { label: 'Resultado', math: '5/24', focus: true, note: '21 − 16 = 5 arriba' },
+          ],
+        },
+      },
+      {
         id: 'c4-s4',
         phase: 'practica',
         headline: 'AHORA TE TOCA A VOS',

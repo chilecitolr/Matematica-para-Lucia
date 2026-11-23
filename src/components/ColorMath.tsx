@@ -48,11 +48,11 @@ export const ColorMath: React.FC<ColorMathProps> = ({
   highlightTarget = 'none',
 }) => {
   const sizeClasses: Record<NonNullable<ColorMathProps['size']>, string> = {
-    sm: 'text-base',
-    md: 'text-lg md:text-xl',
-    lg: 'text-xl md:text-2xl',
-    xl: 'text-2xl md:text-4xl',
-    '2xl': 'text-3xl md:text-5xl',
+    sm: 'text-sm sm:text-base',
+    md: 'text-base sm:text-lg md:text-xl',
+    lg: 'text-lg sm:text-xl md:text-2xl',
+    xl: 'text-xl sm:text-2xl md:text-4xl',
+    '2xl': 'text-2xl sm:text-3xl md:text-5xl',
   };
 
   const tokens: Array<{ value: string; kind: 'num' | 'var' | 'exp' | 'neg' | 'op' | 'word' }> = [];
@@ -210,10 +210,10 @@ export const FractionBox: React.FC<FractionBoxProps> = ({
 }) => {
   const dim =
     size === 'xl'
-      ? 'text-3xl md:text-4xl min-w-[3.2rem]'
+      ? 'text-2xl sm:text-3xl md:text-4xl min-w-[2.6rem] sm:min-w-[3.2rem]'
       : size === 'lg'
-        ? 'text-2xl md:text-3xl min-w-[2.5rem]'
-        : 'text-lg md:text-xl min-w-[2rem]';
+        ? 'text-xl sm:text-2xl md:text-3xl min-w-[2.2rem] sm:min-w-[2.5rem]'
+        : 'text-base sm:text-lg md:text-xl min-w-[1.8rem] sm:min-w-[2rem]';
 
   const hiNum = highlightTarget === 'numerador' || highlightTarget === 'num';
   const hiDen = highlightTarget === 'denominador' || highlightTarget === 'num';
@@ -225,7 +225,7 @@ export const FractionBox: React.FC<FractionBoxProps> = ({
         <span
           className={`inline-block font-bold transition-transform duration-300 ${
             sign === '+' ? 'text-slate-700' : 'text-red-600'
-          } ${size === 'xl' ? 'text-3xl' : 'text-2xl'} ${
+          } ${size === 'xl' ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'} ${
             hiSign ? 'scale-150 bg-red-100 ring-2 ring-red-500 rounded px-1' : ''
           }`}
         >

@@ -117,6 +117,48 @@ export const VIDEO_1_CHAPTERS: Chapter[] = [
         },
       },
       {
+        id: 'c1-s6b',
+        phase: 'paso',
+        headline: 'Paso a paso · Actividad 1c: 5/8 + 1/4 − 3/16',
+        keyMessage: '1. ¿Qué pide? Sumar y restar tres fracciones. 2. Regla: llevamos todas al denominador común 16.',
+        narration:
+          'Vamos despacio con el ejercicio c de la Actividad 1: cinco octavos más un cuarto menos tres dieciseisavos. ¿Qué datos tengo? Tres denominadores distintos: ocho, cuatro y dieciséis. Como dieciséis está en la tabla del ocho y del cuatro, ese es nuestro denominador común. Pasamos cinco octavos multiplicando arriba y abajo por dos: da diez dieciseisavos. Pasamos un cuarto multiplicando por cuatro: da cuatro dieciseisavos. Ahora dejamos el dieciséis abajo y operamos arriba: diez más cuatro es catorce, menos tres es once. El resultado es once dieciseisavos. Comprobamos: once es primo, así que no se simplifica más.',
+        durationSeconds: 18,
+        supportPhrase: 'Un paso a la vez · Todo a denominador 16',
+        diagram: {
+          type: 'steps-board',
+          exerciseTag: 'Actividad 1c · Paso a paso',
+          lines: [
+            { label: 'Ejercicio', math: '5/8 + 1/4 - 3/16', note: 'Denominadores: 8, 4 y 16 → común 16' },
+            { label: 'Paso 1', math: '5/8 = 10/16', note: 'Multiplicamos × 2 arriba y abajo' },
+            { label: 'Paso 2', math: '1/4 = 4/16', note: 'Multiplicamos × 4 arriba y abajo' },
+            { label: 'Paso 3', math: '10/16 + 4/16 - 3/16', note: 'Mismo denominador 16 abajo' },
+            { label: 'Resultado', math: '(10 + 4 - 3)/16 = 11/16', focus: true, note: '11 es primo, ya no se simplifica' },
+          ],
+        },
+      },
+      {
+        id: 'c1-s6c',
+        phase: 'resultado',
+        headline: 'Paso a paso · Actividad 1d: 9/10 − 2/5 + 1/2',
+        keyMessage: 'Llevamos todo al denominador común 10, resolvemos arriba y simplificamos 10/10 = 1.',
+        narration:
+          'Ahora miremos el ejercicio d de la Actividad 1: nueve décimos menos dos quintos más un medio. Buscamos denominador común entre diez, cinco y dos: es el diez. Nueve décimos queda igual. Dos quintos se multiplica por dos arriba y abajo y pasa a cuatro décimos. Un medio se multiplica por cinco y pasa a cinco décimos. Ahora resolvemos arriba: nueve menos cuatro es cinco, y cinco más cinco es diez. Nos queda diez décimos. ¿Tiene sentido simplificar? Sí, porque diez dividido diez es exactamente un entero. Resultado final: uno.',
+        durationSeconds: 18,
+        supportPhrase: 'Si no lo entendiste, volvemos a mirar',
+        diagram: {
+          type: 'steps-board',
+          exerciseTag: 'Actividad 1d · Paso a paso',
+          lines: [
+            { label: 'Ejercicio', math: '9/10 - 2/5 + 1/2', note: 'Denominadores: 10, 5 y 2 → común 10' },
+            { label: 'Paso 1', math: '2/5 = 4/10   y   1/2 = 5/10', note: 'Convertimos a décimos' },
+            { label: 'Paso 2', math: '9/10 - 4/10 + 5/10', note: 'Restamos 9 − 4 = 5 y sumamos 5' },
+            { label: 'Paso 3', math: '10/10', note: 'Diez partes de diez es un entero' },
+            { label: 'Resultado', math: '10/10 = 1', focus: true, note: 'Simplificamos dividiendo por 10' },
+          ],
+        },
+      },
+      {
         id: 'c1-s7',
         phase: 'practica',
         headline: 'AHORA TE TOCA A VOS',
@@ -243,6 +285,48 @@ export const VIDEO_1_CHAPTERS: Chapter[] = [
         },
       },
       {
+        id: 'c2-s4b',
+        phase: 'paso',
+        headline: 'Paso a paso · Actividad 2e: −5/12 × +6/25 ÷ −1/5',
+        keyMessage: 'Resolvemos de izquierda a derecha: primero multiplicamos, simplificamos y luego invertimos para dividir.',
+        narration:
+          'Vamos despacio con el ejercicio e de la Actividad 2, que mezcla multiplicación y división: menos cinco doceavos por más seis veinticincoavos dividido menos un quinto. Resolvemos de izquierda a derecha, una cuenta por vez. Primero multiplicamos menos cinco doceavos por más seis veinticincoavos. Menos por más da menos. Cinco por seis es treinta, y doce por veinticinco es trescientos: queda menos treinta sobre trescientos. Simplificamos dividiendo por treinta y nos queda menos un décimo. Ahora dividimos ese resultado por menos un quinto. Damos vuelta la segunda fracción a menos cinco sobre uno y multiplicamos. Menos por menos da más. Uno por cinco cinco, diez por uno diez: más cinco décimos. Simplificando por cinco, el resultado final es más un medio.',
+        durationSeconds: 19,
+        supportPhrase: 'Vamos despacio · Una operación por vez',
+        diagram: {
+          type: 'steps-board',
+          exerciseTag: 'Actividad 2e · Paso a paso',
+          lines: [
+            { label: 'Ejercicio', math: '-5/12 × +6/25 ÷ -1/5', note: 'De izquierda a derecha' },
+            { label: 'Paso 1', math: '-5/12 × +6/25 = -30/300 = -1/10', note: '(−)×(+)=(−) · Simplificamos ÷ 30' },
+            { label: 'Paso 2', math: '-1/10 ÷ -1/5 = -1/10 × -5/1', note: 'Damos vuelta −1/5 a −5/1' },
+            { label: 'Paso 3', math: '+5/10', note: '(−) × (−) = (+)' },
+            { label: 'Resultado', math: '+5/10 = +1/2', focus: true, note: 'Simplificamos dividiendo por 5' },
+          ],
+        },
+      },
+      {
+        id: 'c2-s4c',
+        phase: 'resultado',
+        headline: 'Paso a paso · Actividad 2f: (−7/10 ÷ +14/15) × −4/5',
+        keyMessage: 'Primero el paréntesis (dando vuelta +14/15), simplificamos a −3/4 y luego multiplicamos por −4/5.',
+        narration:
+          'Miremos ahora el ejercicio f de la Actividad 2: entre paréntesis menos siete décimos dividido más catorce quinceavos, y afuera por menos cuatro quintos. Primero resolvemos solo el paréntesis. Para dividir, dejamos menos siete décimos igual, cambiamos a por y damos vuelta catorce quinceavos a quince catorceavos. Menos por más es menos. Siete por quince ciento cinco, diez por catorce ciento cuarenta. Al simplificar por treinta y cinco nos queda menos tres cuartos. Ahora multiplicamos menos tres cuartos por menos cuatro quintos. Menos por menos da más. Tres por cuatro doce, cuatro por cinco veinte. Simplificamos dividiendo por cuatro y llegamos al resultado: más tres quintos.',
+        durationSeconds: 19,
+        supportPhrase: 'Primero paréntesis · Cuidamos cada signo',
+        diagram: {
+          type: 'steps-board',
+          exerciseTag: 'Actividad 2f · Paso a paso',
+          lines: [
+            { label: 'Ejercicio', math: '(-7/10 ÷ +14/15) × -4/5', note: 'Primero el paréntesis' },
+            { label: 'Paso 1', math: '-7/10 × +15/14 = -105/140', note: 'Damos vuelta +14/15 a +15/14' },
+            { label: 'Paso 2', math: '-105/140 = -3/4', note: 'Simplificamos dividiendo por 35' },
+            { label: 'Paso 3', math: '-3/4 × -4/5 = +12/20', note: '(−) × (−) = (+)' },
+            { label: 'Resultado', math: '+12/20 = +3/5', focus: true, note: 'Simplificamos dividiendo por 4' },
+          ],
+        },
+      },
+      {
         id: 'c2-s5',
         phase: 'practica',
         headline: 'AHORA TE TOCA A VOS',
@@ -357,6 +441,48 @@ export const VIDEO_1_CHAPTERS: Chapter[] = [
             { label: '(e)', math: '[(-2/3 × 9/10) - (-1/5)] = -3/5 + 1/5 = -2/5' },
             { label: '(f)', math: '(-3/4 + 1/8) ÷ [(-7/6) × (-1/3)] = (-5/8) ÷ (7/18) = -45/28' },
             { label: '(g)', math: '[(-5/6 × 1/3) × (-3/4)] - 1/8 = 5/24 - 3/24 = 1/12', focus: true },
+          ],
+        },
+      },
+      {
+        id: 'c5-s4b',
+        phase: 'paso',
+        headline: 'Paso a paso · Actividad 5(e): [(−2/3 × 9/10) − (−1/5)]',
+        keyMessage: 'Primero multiplicamos adentro del paréntesis, simplificamos y transformamos −(−1/5) en +1/5.',
+        narration:
+          'Vamos despacio con el ejercicio e de la Actividad 5: entre corchetes, menos dos tercios por nueve décimos, menos menos un quinto. Primero hacemos el paréntesis de la multiplicación: menos dos tercios por nueve décimos. Menos por más da menos. Dos por nueve dieciocho, tres por diez treinta: queda menos dieciocho treintavos. Simplificamos dividiendo por seis y nos da menos tres quintos. Segundo paso, atención al signo menos delante del paréntesis: menos menos un quinto. Restar un número negativo es lo mismo que sumar: dos signos menos juntos se transforman en más un quinto. Ahora tienen el mismo denominador cinco. Menos tres quintos más un quinto es menos dos quintos. Comprobamos: si debo tres quintos y pago un quinto, sigo debiendo dos quintos.',
+        durationSeconds: 20,
+        supportPhrase: 'Atención: menos menos se convierte en más',
+        diagram: {
+          type: 'steps-board',
+          exerciseTag: 'Actividad 5(e) · Paso a paso',
+          lines: [
+            { label: 'Ejercicio', math: '[(-2/3 × 9/10) - (-1/5)]', note: 'Primero el paréntesis de multiplicación' },
+            { label: 'Paso 1', math: '-2/3 × 9/10 = -18/30 = -3/5', note: '(−)×(+)=(−) · Simplificamos ÷ 6' },
+            { label: 'Paso 2', math: '- (-1/5) = +1/5', note: 'Doble signo negativo se vuelve +' },
+            { label: 'Paso 3', math: '-3/5 + 1/5', note: 'Mismo denominador 5 abajo' },
+            { label: 'Resultado', math: '-2/5', focus: true, note: '−3 + 1 = −2 arriba' },
+          ],
+        },
+      },
+      {
+        id: 'c5-s4c',
+        phase: 'resultado',
+        headline: 'Paso a paso · Actividad 5(f): (−3/4 + 1/8) ÷ [(−7/6) × (−1/3)]',
+        keyMessage: 'Resolvemos cada bloque por separado, luego damos vuelta 7/18 para dividir y simplificamos.',
+        narration:
+          'Miremos ahora el ejercicio f de la Actividad 5, que tiene dos bloques separados por un dividido. Vamos un bloque a la vez. En el primer paréntesis tenemos menos tres cuartos más un octavo. Buscamos denominador común ocho: menos tres cuartos es menos seis octavos. Menos seis octavos más un octavo da menos cinco octavos. Ahora vamos al corchete de la derecha: menos siete sextos por menos un tercio. Menos por menos da más. Siete por uno siete, seis por tres dieciocho: nos da más siete dieciochoavos. Ya nos quedó una división simple: menos cinco octavos dividido más siete dieciochoavos. Damos vuelta la segunda fracción a dieciocho séptimos y multiplicamos. Menos por más es menos. Cinco por dieciocho noventa, ocho por siete cincuenta y seis: menos noventa sobre cincuenta y seis. Dividiendo arriba y abajo por dos, el resultado final es menos cuarenta y cinco veintiochoavos.',
+        durationSeconds: 21,
+        supportPhrase: 'Dividimos el problema en dos bloques simples',
+        diagram: {
+          type: 'steps-board',
+          exerciseTag: 'Actividad 5(f) · Paso a paso',
+          lines: [
+            { label: 'Bloque 1', math: '-3/4 + 1/8 = -6/8 + 1/8 = -5/8', note: 'Común denominador 8' },
+            { label: 'Bloque 2', math: '(-7/6) × (-1/3) = +7/18', note: '(−) × (−) = (+)' },
+            { label: 'División', math: '-5/8 ÷ +7/18 = -5/8 × +18/7', note: 'Damos vuelta +7/18 a +18/7' },
+            { label: 'Paso 4', math: '-90/56', note: '5×18=90 y 8×7=56 · (−)×(+)=(−)' },
+            { label: 'Resultado', math: '-45/28', focus: true, note: 'Simplificamos dividiendo por 2' },
           ],
         },
       },

@@ -134,7 +134,7 @@ export default function App() {
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col">
       {/* Strict 3-Zone Top Navigation Bar */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div className="max-w-[1440px] mx-auto px-6 py-3.5 flex items-center justify-between gap-8">
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-8">
           {/* Zone 1: Single-line Brand Wordmark */}
           <a
             href="#inicio"
@@ -142,7 +142,7 @@ export default function App() {
               e.preventDefault();
               handleSelectVideo('video-1');
             }}
-            className="font-display text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
+            className="font-display text-base sm:text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
           >
             Matemática Paso a Paso
           </a>
@@ -172,26 +172,27 @@ export default function App() {
           </nav>
 
           {/* Zone 3: 1 Primary CTA */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => {
                 setDownloadTargetVideoId(null);
                 setDownloadModalOpen(true);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 min-h-[40px] rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Download className="w-4 h-4" />
-              <span>Descargar videos MP4</span>
+              <Download className="w-4 h-4 shrink-0" />
+              <span className="sm:hidden">Bajar MP4</span>
+              <span className="hidden sm:inline">Descargar videos MP4</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content Container */}
-      <main id="inicio" className="flex-1 max-w-[1440px] w-full mx-auto px-6 py-6 md:py-8 space-y-6">
+      <main id="inicio" className="flex-1 max-w-[1440px] w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 md:py-8 space-y-4 sm:space-y-6">
         {/* Compact Video Selector for mobile/tablet viewports */}
-        <div className="flex lg:hidden items-center gap-2 overflow-x-auto pb-1">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap lg:hidden items-center gap-2">
           {VIDEO_MODULES.map((vid) => {
             const active = vid.id === activeVideoId;
             return (
@@ -199,7 +200,7 @@ export default function App() {
                 key={vid.id}
                 type="button"
                 onClick={() => handleSelectVideo(vid.id)}
-                className={`px-3.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap shrink-0 border cursor-pointer ${
+                className={`px-3 py-2.5 min-h-[44px] rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap border cursor-pointer text-center ${
                   active
                     ? 'bg-blue-700 text-white border-blue-700'
                     : 'bg-white text-slate-700 border-slate-200'
@@ -212,11 +213,11 @@ export default function App() {
         </div>
 
         {/* Cartel de dedicatoria para Lucía */}
-        <div className="bg-blue-50/80 border border-blue-200 rounded-2xl px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <p className="font-display text-lg md:text-xl font-bold text-slate-900">
+        <div className="bg-blue-50/80 border border-blue-200 rounded-2xl px-4 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+          <p className="font-display text-base sm:text-lg md:text-xl font-bold text-slate-900">
             Este material está adaptado para Lucía.
           </p>
-          <p className="font-display text-base md:text-lg font-semibold text-blue-800">
+          <p className="font-display text-sm sm:text-base md:text-lg font-semibold text-blue-800">
             Con amor, su papá!!
           </p>
         </div>
@@ -224,29 +225,29 @@ export default function App() {
         {/* Series Heading & Quiet Metadata (Zero Pills) */}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm text-slate-500">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-slate-500">
               <span>Escuela Privada Gabriela Mistral</span>
               <span aria-hidden="true">·</span>
               <span>3.er año · Trabajo Práctico Integrador Final</span>
               <span aria-hidden="true">·</span>
               <span>{totalChaptersCount} capítulos en 4 videos cortos</span>
             </div>
-            <h1 className="font-display text-2xl md:text-3xl font-bold text-slate-900">
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">
               {activeVideo.shortLabel}: {activeVideo.title}
             </h1>
-            <p className="text-slate-600 text-sm md:text-base">
+            <p className="text-slate-600 text-sm sm:text-base">
               {activeVideo.subtitle}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => {
                 setDownloadTargetVideoId(activeVideoId);
                 setDownloadModalOpen(true);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 min-h-[44px] rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-medium whitespace-nowrap shrink-0 cursor-pointer flex-1 sm:flex-initial"
             >
               <Download className="w-4 h-4" />
               <span>Bajar este video (MP4)</span>
@@ -254,7 +255,7 @@ export default function App() {
             <button
               type="button"
               onClick={handleJumpToSummary}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 min-h-[44px] rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs sm:text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Award className="w-4 h-4 text-emerald-700" />
               <span>Logros finales</span>
@@ -262,7 +263,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setShowPdfModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 min-h-[44px] rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs sm:text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
             >
               <FileText className="w-4 h-4 text-blue-700" />
               <span>Ver TP original (PDF)</span>
@@ -307,7 +308,7 @@ export default function App() {
                           : 'En pausa para observar'}
                   </span>
                 </div>
-                <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${flatScenes.length}, minmax(0, 1fr))` }}>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 sm:grid" style={{ gridTemplateColumns: `repeat(${flatScenes.length}, minmax(0, 1fr))` }}>
                   {flatScenes.map((item, idx) => {
                     const isDone = idx < sceneIndex;
                     const isCurrent = idx === sceneIndex;
@@ -318,26 +319,28 @@ export default function App() {
                         onClick={() => setSceneIndex(idx)}
                         title={`Ir a: ${item.scene.headline}`}
                         aria-label={`Escena ${idx + 1}: ${item.scene.headline}`}
-                        className={`h-2.5 rounded-full transition-colors cursor-pointer ${
+                        className={`h-8 min-w-[32px] sm:min-w-0 sm:h-3 rounded-lg sm:rounded-full transition-colors cursor-pointer shrink-0 flex items-center justify-center text-xs sm:text-[0px] font-math font-semibold ${
                           isCurrent
-                            ? 'bg-blue-700'
+                            ? 'bg-blue-700 text-white'
                             : isDone
-                              ? 'bg-blue-300 hover:bg-blue-400'
-                              : 'bg-slate-200 hover:bg-slate-300'
+                              ? 'bg-blue-200 sm:bg-blue-300 text-blue-900 hover:bg-blue-400'
+                              : 'bg-slate-100 sm:bg-slate-200 text-slate-600 hover:bg-slate-300'
                         }`}
-                      />
+                      >
+                        <span className="sm:hidden">{idx + 1}</span>
+                      </button>
                     );
                   })}
                 </div>
               </div>
 
               {/* Primary Playback Controls */}
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setIsPlaying((p) => !p)}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                    className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
                     {isPlaying ? (
                       <>
@@ -356,7 +359,7 @@ export default function App() {
                     type="button"
                     onClick={handlePrevScene}
                     disabled={sceneIndex === 0}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     <span>Anterior</span>
@@ -364,30 +367,30 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={handleRepeatScene}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Volver a mirar</span>
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={handleNextScene}
                     disabled={sceneIndex >= flatScenes.length - 1}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer sm:order-4"
                   >
                     <span>Siguiente</span>
                     <ChevronRight className="w-4 h-4" />
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={handleRepeatScene}
+                    className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer sm:order-3"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Volver a mirar</span>
+                  </button>
                 </div>
 
                 {/* Audio, Subtitles & Calm Speed Controls */}
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setMuted((m) => !m)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
                     aria-pressed={!muted}
                   >
                     {muted ? (
@@ -406,7 +409,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setShowSubtitles((s) => !s)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
                       showSubtitles
                         ? 'border-blue-200 bg-blue-50 text-blue-800'
                         : 'border-slate-200 bg-white text-slate-700'
@@ -416,13 +419,13 @@ export default function App() {
                     <span>Subtítulos</span>
                   </button>
 
-                  <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+                  <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg min-h-[44px]">
                     {([0.75, 0.9, 1] as const).map((rate) => (
                       <button
                         key={rate}
                         type="button"
                         onClick={() => setPlaybackRate(rate)}
-                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                        className={`px-2.5 py-1.5 min-h-[36px] text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                           playbackRate === rate
                             ? 'bg-white text-slate-900 shadow-sm'
                             : 'text-slate-600 hover:text-slate-900'
@@ -440,7 +443,7 @@ export default function App() {
           {/* RIGHT ZONE: Constant Color Legend & Chapter / Scene Index */}
           <aside className="lg:col-span-4 space-y-5">
             {/* Interactive Constant Visual Color Legend */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3">
               <div>
                 <h2 className="font-display text-base font-bold text-slate-900">
                   Código de colores en toda la serie
@@ -487,14 +490,18 @@ export default function App() {
                     <button
                       key={item.target}
                       type="button"
-                      onMouseEnter={() => setManualSpotlight(item.target)}
-                      onMouseLeave={() => setManualSpotlight('none')}
+                      onPointerEnter={(e) => {
+                        if (e.pointerType === 'mouse') setManualSpotlight(item.target);
+                      }}
+                      onPointerLeave={(e) => {
+                        if (e.pointerType === 'mouse') setManualSpotlight('none');
+                      }}
                       onClick={() =>
                         setManualSpotlight((prev) =>
                           prev === item.target ? 'none' : item.target
                         )
                       }
-                      className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                      className={`flex items-center gap-2.5 p-3 min-h-[44px] rounded-xl border text-left transition-colors cursor-pointer ${
                         isActive ? item.activeRing : item.box
                       }`}
                     >
@@ -507,7 +514,7 @@ export default function App() {
             </div>
 
             {/* Chapter & Scene Selector */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-display text-base font-bold text-slate-900">
                   Capítulos de este video
@@ -540,13 +547,13 @@ export default function App() {
                               key={item.scene.id}
                               type="button"
                               onClick={() => setSceneIndex(item.globalIndex)}
-                              className={`w-full text-left px-3 py-2 rounded-lg text-xs md:text-sm transition-colors flex items-center justify-between gap-2 cursor-pointer ${
+                              className={`w-full text-left px-3 py-2.5 min-h-[44px] rounded-lg text-xs sm:text-sm transition-colors flex items-center justify-between gap-2 cursor-pointer ${
                                 active
                                   ? 'bg-blue-50 text-blue-900 font-semibold border border-blue-200'
                                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
                               }`}
                             >
-                              <span className="truncate">{item.scene.headline}</span>
+                              <span className="leading-snug">{item.scene.headline}</span>
                               {isPractice && (
                                 <span className="text-[11px] font-semibold text-amber-700 shrink-0">
                                   Práctica
@@ -578,27 +585,37 @@ export default function App() {
       {/* In-App Modal for Viewing Original PDF without window.open */}
       {showPdfModal && (
         <div
-          className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 md:p-8"
+          className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3 sm:p-6 md:p-8"
           role="dialog"
           aria-modal="true"
           aria-label="Trabajo Práctico Integrador Final en PDF"
         >
           <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden shadow-xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <div className="font-display font-bold text-slate-900">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200">
+              <div className="font-display text-sm sm:text-base font-bold text-slate-900">
                 Trabajo Práctico Integrador Final – Matemática 3.er año
               </div>
-              <button
-                type="button"
-                onClick={() => setShowPdfModal(false)}
-                className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 cursor-pointer"
-                aria-label="Cerrar documento"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`${import.meta.env.BASE_URL}assets/aistudio/Trabajo_Practico_Integrador_Matematica_3er_ano_monomios_corregidos_2fb32742.pdf`}
+                  download="Trabajo_Practico_Integrador_Matematica_3er_ano.pdf"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs sm:text-sm font-semibold whitespace-nowrap"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Descargar PDF</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setShowPdfModal(false)}
+                  className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 cursor-pointer"
+                  aria-label="Cerrar documento"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             <iframe
-              src="/assets/aistudio/Trabajo_Practico_Integrador_Matematica_3er_ano_monomios_corregidos_2fb32742.pdf"
+              src={`${import.meta.env.BASE_URL}assets/aistudio/Trabajo_Practico_Integrador_Matematica_3er_ano_monomios_corregidos_2fb32742.pdf`}
               title="PDF del Trabajo Práctico Integrador Final"
               className="flex-1 w-full bg-slate-100"
             />
