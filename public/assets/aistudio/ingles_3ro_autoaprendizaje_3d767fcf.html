@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inglés 3.º Año - Guía Visual Interactiva (Autoaprendizaje)</title>
+<style>
+  :root {
+    --bg-cream: #FAF8F2;
+    --navy: #142841;
+    --gold: #F4D06F;
+    --teal-bg: #E6F6F4;
+    --teal-border: #1E847F;
+    --blue-bg: #EAF3FA;
+    --blue-border: #2B70B0;
+    --orange-bg: #FDF2E4;
+    --orange-border: #D47A22;
+    --purple-bg: #F3EEFA;
+    --purple-border: #6E4A9E;
+    --green-bg: #E8F6EE;
+    --green-border: #23864E;
+    --text-dark: #1E242B;
+    --card-shadow: 0 8px 24px rgba(20, 40, 65, 0.08);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Verdana', 'Arial', sans-serif;
+    background-color: var(--bg-cream);
+    color: var(--text-dark);
+    line-height: 1.65;
+    letter-spacing: 0.02em;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  .app-container {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Barra superior */
+  .top-header {
+    background-color: var(--navy);
+    color: #FFFFFF;
+    padding: 16px 24px;
+    border-radius: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .top-header h1 {
+    font-size: 1.15rem;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .badge-step {
+    background-color: var(--teal-border);
+    color: #FFFFFF;
+    font-weight: bold;
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 1rem;
+  }
+
+  /* Barra de progreso */
+  .progress-wrap {
+    width: 100%;
+    background-color: #E2DFD5;
+    height: 12px;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background-color: var(--teal-border);
+    width: 7%;
+    transition: width 0.3s ease;
+  }
+
+  /* Controles de accesibilidad */
+  .tools-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: #FFFFFF;
+    padding: 10px 16px;
+    border-radius: 14px;
+    border: 2px solid #E5E1D5;
+  }
+
+  .tool-btn {
+    background-color: var(--navy);
+    color: #FFFFFF;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.1s ease, opacity 0.2s;
+  }
+
+  .tool-btn:hover {
+    opacity: 0.92;
+  }
+
+  .tool-btn:active {
+    transform: scale(0.98);
+  }
+
+  .tool-btn.secondary {
+    background-color: #EFECE2;
+    color: var(--navy);
+  }
+
+  /* Tarjeta principal */
+  .slide-card {
+    background-color: var(--teal-bg);
+    border: 4px solid var(--teal-border);
+    border-radius: 26px;
+    padding: 28px 26px;
+    box-shadow: var(--card-shadow);
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+  }
+
+  .slide-card.theme-teal   { background-color: var(--teal-bg);   border-color: var(--teal-border); }
+  .slide-card.theme-blue   { background-color: var(--blue-bg);   border-color: var(--blue-border); }
+  .slide-card.theme-green  { background-color: var(--green-bg);  border-color: var(--green-border); }
+  .slide-card.theme-orange { background-color: var(--orange-bg); border-color: var(--orange-border); }
+  .slide-card.theme-purple { background-color: var(--purple-bg); border-color: var(--purple-border); }
+
+  .slide-title {
+    font-size: 1.75rem;
+    color: var(--navy);
+    margin-bottom: 18px;
+    font-weight: bold;
+  }
+
+  .item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .vocab-row {
+    background: rgba(255, 255, 255, 0.85);
+    padding: 12px 16px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 1.15rem;
+  }
+
+  .en-word {
+    font-weight: bold;
+    color: var(--navy);
+    font-size: 1.2rem;
+  }
+
+  .arrow-eq {
+    color: #555;
+    font-weight: bold;
+    margin: 0 6px;
+  }
+
+  .es-word {
+    color: #2C353F;
+  }
+
+  .speak-mini {
+    background-color: var(--navy);
+    color: #FFF;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .speak-mini:hover {
+    background-color: #24456E;
+  }
+
+  .rule-box {
+    background: #FFFFFF;
+    border-left: 6px solid var(--navy);
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    margin-top: 8px;
+  }
+
+  /* Quiz interactivo */
+  .quiz-item {
+    background: #FFFFFF;
+    padding: 16px;
+    border-radius: 16px;
+    margin-bottom: 14px;
+    border: 2px solid #DCE4EC;
+  }
+
+  .quiz-question {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: var(--navy);
+  }
+
+  .quiz-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .opt-btn {
+    background-color: #F2F5F8;
+    border: 2px solid #C5D1DE;
+    color: var(--navy);
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .opt-btn:hover {
+    background-color: #E3ECF5;
+  }
+
+  .opt-btn.correct {
+    background-color: #D4F4E2;
+    border-color: #23864E;
+    color: #134E2D;
+  }
+
+  .opt-btn.wrong {
+    background-color: #FADBD8;
+    border-color: #C0392B;
+    color: #78281F;
+  }
+
+  .feedback-msg {
+    margin-top: 8px;
+    font-weight: bold;
+    font-size: 1rem;
+  }
+
+  /* Barra inferior de acción */
+  .bottom-pill {
+    background-color: var(--teal-border);
+    color: #FFFFFF;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+
+  .nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 6px;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 14px 20px;
+    border-radius: 16px;
+    border: none;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: var(--navy);
+    color: #FFFFFF;
+    transition: opacity 0.2s;
+  }
+
+  .nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .nav-btn.prev {
+    background-color: #E2DFD5;
+    color: var(--navy);
+  }
+
+  /* Ajuste de tamaño de letra */
+  body.large-text .slide-title { font-size: 2rem; }
+  body.large-text .vocab-row { font-size: 1.35rem; }
+  body.large-text .en-word { font-size: 1.4rem; }
+  body.large-text .rule-box { font-size: 1.3rem; }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <header class="top-header">
+    <h1 id="header-topic">INGLÉS · 3.º AÑO</h1>
+    <span class="badge-step" id="step-counter">Paso 1 de 14</span>
+  </header>
+
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+
+  <div class="tools-bar">
+    <button class="tool-btn" onclick="readCurrentSlide()">🔊 Escuchar explicación</button>
+    <div style="display:flex; gap:8px;">
+      <button class="tool-btn secondary" onclick="toggleFontSize()">Aa+ Letra grande</button>
+      <button class="tool-btn secondary" onclick="stopSpeech()">⏹ Silenciar</button>
+    </div>
+  </div>
+
+  <main class="slide-card theme-teal" id="slide-card">
+    <!-- Contenido dinámico -->
+  </main>
+
+  <div class="bottom-pill" id="bottom-pill">MIRÁ • ESCUCHÁ • PRACTICÁ</div>
+
+  <nav class="nav-buttons">
+    <button class="nav-btn prev" id="btn-prev" onclick="changeSlide(-1)">⬅ Anterior</button>
+    <button class="nav-btn" id="btn-next" onclick="changeSlide(1)">Siguiente ➡</button>
+  </nav>
+</div>
+
+<script>
+const slides = [
+  {
+    topic: "INGLÉS · 3.º AÑO — PASO A PASO",
+    theme: "theme-teal",
+    pillColor: "#1E847F",
+    title: "Aprendemos de a poquito",
+    voiceIntro: "Bienvenido a tu guía interactiva de Inglés de tercer año. Vamos a aprender de a poquito: mirar, escuchar, comprender y practicar. Hacé clic en Siguiente cuando estés listo.",
+    html: `
+      <div class="item-list">
+        <div class="rule-box" style="font-size:1.25rem; text-align:center;">
+          <strong>Mirar • Escuchar • Comprender • Practicar</strong>
+        </div>
+        <div class="vocab-row"><span>1️⃣ <strong>Weather</strong> y <strong>Natural Disasters</strong> (Clima y desastres)</span></div>
+        <div class="vocab-row"><span>2️⃣ <strong>Was / Were</strong> (El pasado de To Be)</span></div>
+        <div class="vocab-row"><span>3️⃣ <strong>Past Simple</strong> (Verbos regulares, irregulares, Didn't / Did)</span></div>
+        <div class="vocab-row"><span>4️⃣ <strong>In / On / At</strong> (Cuándo ocurren las cosas)</span></div>
+      </div>
+    `
+  },
+  {
+    topic: "EL CLIMA",
+    theme: "theme-blue",
+    pillColor: "#2B70B0",
+    title: "Weather (El clima)",
+    voiceIntro: "Tema uno: Weather, el clima. Tocá el botón de audio al lado de cada palabra para escuchar cómo se pronuncia en inglés.",
+    items: [
+      { en: "SUNNY", es: "soleado" },
+      { en: "CLOUDY", es: "nublado" },
+      { en: "RAINY", es: "lluvioso" },
+      { en: "WINDY", es: "ventoso" },
+      { en: "SNOWY", es: "nevado" }
+    ]
+  },
+  {
+    topic: "DESASTRES NATURALES",
+    theme: "theme-green",
+    pillColor: "#23864E",
+    title: "Natural disasters",
+    voiceIntro: "Desastres naturales: Natural disasters. Escuchá y repetí cada palabra en voz alta.",
+    items: [
+      { en: "TORNADO", es: "tornado" },
+      { en: "FLOOD", es: "inundación" },
+      { en: "WILDFIRE", es: "incendio forestal" },
+      { en: "VOLCANO", es: "volcán" }
+    ]
+  },
+  {
+    topic: "EL PASADO DE TO BE",
+    theme: "theme-teal",
+    pillColor: "#1E847F",
+    title: "Was / Were",
+    voiceIntro: "El pasado del verbo To Be significa ser o estar. Usamos WAS con I, he, she, it. Y usamos WERE con you, we, they.",
+    html: `
+      <div class="item-list">
+        <div class="vocab-row">
+          <div><span class="en-word">TO BE</span><span class="arrow-eq">=</span><span class="es-word">ser / estar</span></div>
+          <button class="speak-mini" onclick="speakEn('To be')">🔊 Escuchar</button>
+        </div>
+        <div class="vocab-row">
+          <div><span class="en-word">WAS</span><span class="arrow-eq">→</span><span class="es-word"><strong>I, HE, SHE, IT</strong> (singular)</span></div>
+          <button class="speak-mini" onclick="speakEn('I was, he was, she was, it was')">🔊 Escuchar</button>
+        </div>
+        <div class="vocab-row">
+          <div><span class="en-word">WERE</span><span class="arrow-eq">→</span><span class="es-word"><strong>YOU, WE, THEY</strong> (plural / vos)</span></div>
+          <button class="speak-mini" onclick="speakEn('You were, we were, they were')">🔊 Escuchar</button>
+        </div>
+      </div>
+    `
+  },
+  {
+    topic: "DECIMOS QUE SÍ",
+    theme: "theme-blue",
+    pillColor: "#2B70B0",
+    title: "Was / Were · afirmativo",
+    voiceIntro: "Oraciones afirmativas con Was y Were. Escuchá cada ejemplo y repetilo.",
+    items: [
+      { en: "I WAS happy.", es: "Yo estaba feliz." },
+      { en: "She WAS at home.", es: "Ella estaba en casa." },
+      { en: "They WERE tired.", es: "Ellos estaban cansados." }
+    ]
+  },
+  {
+    topic: "DECIMOS QUE NO",
+    theme: "theme-orange",
+    pillColor: "#D47A22",
+    title: "Was / Were · negativo",
+    voiceIntro: "Para decir que no en pasado, unimos was not en wasn't, y were not en weren't.",
+    html: `
+      <div class="item-list">
+        <div class="rule-box">
+          <strong>WAS NOT → WASN'T</strong> &nbsp;&nbsp;|&nbsp;&nbsp; <strong>WERE NOT → WEREN'T</strong>
+        </div>
+        <div class="vocab-row">
+          <div><span class="en-word">I wasn't tired.</span><span class="arrow-eq">=</span><span class="es-word">Yo no estaba cansado/a.</span></div>
+          <button class="speak-mini" onclick="speakEn('I was not tired. I wasn\'t tired.')">🔊 Escuchar</button>
+        </div>
+        <div class="vocab-row">
+          <div><span class="en-word">They weren't home.</span><span class="arrow-eq">=</span><span class="es-word">Ellos no estaban en casa.</span></div>
+          <button class="speak-mini" onclick="speakEn('They were not home. They weren\'t home.')">🔊 Escuchar</button>
+        </div>
+      </div>
+    `
+  },
+  {
+    topic: "PREGUNTAMOS",
+    theme: "theme-purple",
+    pillColor: "#6E4A9E",
+    title: "Was / Were · preguntas",
+    voiceIntro: "Para hacer preguntas, ponemos Was o Were adelante de la persona. Por ejemplo: Was she happy? Yes, she was. No, she wasn't.",
+    html: `
+      <div class="item-list">
+        <div class="rule-box">
+          <strong>WAS / WERE + PERSONA + ... ?</strong>
+        </div>
+        <div class="vocab-row">
+          <div><span class="en-word">Was she happy?</span><span class="arrow-eq">=</span><span class="es-word">¿Estaba ella feliz?</span></div>
+          <button class="speak-mini" onclick="speakEn('Was she happy?')">🔊 Escuchar</button>
+        </div>
+        <div class="vocab-row">
+          <div><span class="en-word">Were they home?</span><span class="arrow-eq">=</span><span class="es-word">¿Estaban ellos en casa?</span></div>
+          <button class="speak-mini" onclick="speakEn('Were they home?')">🔊 Escuchar</button>
+        </div>
+        <div class="vocab-row">
+          <div><span class="en-word">YES, she was. / NO, she wasn't.</span></div>
+          <button class="speak-mini" onclick="speakEn('Yes, she was. No, she wasn\'t.')">🔊 Escuchar</button>
+        </div>
+      </div>
+    `
+  },
+  {
+    topic: "ACCIONES QUE YA PASARON",
+    theme: "theme-orange",
+    pillColor: "#D47A22",
+    title: "Past Simple (Pasado simple)",
+    voiceIntro: "Usamos Past Simple para acciones que ya terminaron, como ayer, yesterday, o la semana pasada, last week. I play es presente; I played es pasado.",
+    items: [
+      { en: "YESTERDAY", es: "ayer" },
+      { en: "LAST WEEK", es: "la semana pasada" },
+      { en: "I PLAY", es: "yo juego (presente)" },
+      { en: "I PLAYED", es: "yo jugué (pasado)" }
+    ]
+  },
+  {
+    topic: "MUCHOS AGREGAN ED",
+    theme: "theme-blue",
+    pillColor: "#2B70B0",
+    title: "Verbos regulares (+ ED)",
+    voiceIntro: "Los verbos regulares forman el pasado agregando e d al final: play, played; walk, walked; visit, visited; watch, watched.",
+    items: [
+      { en: "PLAY → PLAYED", es: "jugar → jugó" },
+      { en: "WALK → WALKED", es: "caminar → caminó" },
+      { en: "VISIT → VISITED", es: "visitar → visitó" },
+      { en: "WATCH → WATCHED", es: "mirar → miró" }
+    ]
+  },
+  {
+    topic: "CAMBIAN DE FORMA",
+    theme: "theme-green",
+    pillColor: "#23864E",
+    title: "Verbos irregulares",
+    voiceIntro: "Los verbos irregulares no llevan e d, cambian de forma. Escuchá cada par: go, went; eat, ate; see, saw; have, had; buy, bought; do, did.",
+    items: [
+      { en: "GO → WENT", es: "ir → fue" },
+      { en: "EAT → ATE", es: "comer → comió" },
+      { en: "SEE → SAW", es: "ver → vio" },
+      { en: "HAVE → HAD", es: "tener → tuvo" },
+      { en: "BUY → BOUGHT", es: "comprar → compró" },
+      { en: "DO → DID", es: "hacer → hizo" }
+    ]
+  },
+  {
+    topic: "NEGAR Y PREGUNTAR",
+    theme: "theme-purple",
+    pillColor: "#6E4A9E",
+    title: "Didn't / Did",
+    voiceIntro: "Para negar en pasado usamos didn't. Para preguntar usamos Did adelante. Regla clave: cuando aparece did o didn't, el verbo principal queda normal, sin e d.",
+    html: `
+      <div class="item-list">
+        <div class="vocab-row">
+          <div><span class="en-word">NEGATIVO: I DIDN'T play.</span><span class="arrow-eq">=</span><span class="es-word">No jugué.</span></div>
+          <button class="speak-mini" onclick="speakEn('I didn\'t play.')">🔊 Escuchar</button>
+        </div>
+        <div class="vocab-row">
+          <div><span class="en-word">PREGUNTA: Did you play?</span><span class="arrow-eq">=</span><span class="es-word">¿Jugaste?</span></div>
+          <button class="speak-mini" onclick="speakEn('Did you play?')">🔊 Escuchar</button>
+        </div>
+        <div class="rule-box">
+          💡 <strong>Regla de oro:</strong> Después de <strong>DID</strong> o <strong>DIDN'T</strong>, el verbo queda normal (en infinitivo, sin <em>-ed</em>).
+        </div>
+      </div>
+    `
+  },
+  {
+    topic: "¿CUÁNDO?",
+    theme: "theme-teal",
+    pillColor: "#1E847F",
+    title: "In / On / At",
+    voiceIntro: "Preposiciones de tiempo. Usamos IN para meses y años, como in July o in 2025. Usamos ON para días y fechas, como on Monday. Usamos AT para horas y momentos puntuales, como at 5 o'clock o at night.",
+    html: `
+      <div class="item-list">
+        <div class="vocab-row">
+          <div><span class="en-word">IN → meses y años</span><br><span class="es-word">Ej: <strong>IN July</strong> · <strong>IN 2025</strong></span></div>
+          <button class="speak-mini" onclick="speakEn('In July. In 2025.')">🔊 Escuchar</button>
+        </div>
+        <div class="vocab-row">
+          <div><span class="en-word">ON → días y fechas</span><br><span class="es-word">Ej: <strong>ON Monday</strong></span></div>
+          <button class="speak-mini" onclick="speakEn('On Monday.')">🔊 Escuchar</button>
+        </div>
+        <div class="vocab-row">
+          <div><span class="en-word">AT → horas y momentos</span><br><span class="es-word">Ej: <strong>AT 5 o'clock</strong> · <strong>AT night</strong></span></div>
+          <button class="speak-mini" onclick="speakEn('At 5 o\'clock. At night.')">🔊 Escuchar</button>
+        </div>
+      </div>
+    `
+  },
+  {
+    topic: "PENSAMOS Y RESPONDEMOS",
+    theme: "theme-blue",
+    pillColor: "#2B70B0",
+    title: "Mini repaso interactivo",
+    voiceIntro: "Llegamos al mini repaso. Tomate unos segundos y elegí la respuesta correcta en cada pregunta.",
+    isQuiz: true,
+    questions: [
+      {
+        q: "1. ¿Cómo digo “soleado” en inglés?",
+        options: ["Cloudy", "Sunny", "Windy"],
+        correct: 1,
+        explanation: "¡Muy bien! Sunny = soleado."
+      },
+      {
+        q: "2. ¿Se dice “I was” o “I were”?",
+        options: ["I was", "I were"],
+        correct: 0,
+        explanation: "¡Exacto! Con I, he, she, it usamos WAS."
+      },
+      {
+        q: "3. ¿Cómo digo “yo jugué”?",
+        options: ["I play", "I played", "I didn't played"],
+        correct: 1,
+        explanation: "¡Genial! Play es verbo regular: agrega -ed → I played."
+      },
+      {
+        q: "4. ¿Qué va con Monday (día de la semana)?",
+        options: ["IN Monday", "ON Monday", "AT Monday"],
+        correct: 1,
+        explanation: "¡Perfecto! Para días usamos ON → On Monday."
+      }
+    ]
+  },
+  {
+    topic: "CADA PASO CUENTA",
+    theme: "theme-purple",
+    pillColor: "#6E4A9E",
+    title: "¡Vos podés!",
+    voiceIntro: "¡Vos podés! No hace falta saberlo todo hoy. Podés volver a mirar, podés escuchar otra vez y podés aprender a tu ritmo. ¡Excelente trabajo!",
+    html: `
+      <div class="item-list">
+        <div class="rule-box" style="font-size:1.25rem;">
+          <strong>No hace falta saberlo todo hoy.</strong>
+        </div>
+        <div class="vocab-row"><span>👀 Podés volver a mirar.</span></div>
+        <div class="vocab-row"><span>🔊 Podés escuchar otra vez.</span></div>
+        <div class="vocab-row"><span>🌱 Podés aprender a tu ritmo.</span></div>
+        <div style="text-align:center; margin-top:10px;">
+          <button class="tool-btn" onclick="goToSlide(0)">🔄 Volver a empezar el repaso</button>
+        </div>
+      </div>
+    `
+  }
+];
+
+let currentSlide = 0;
+
+function renderSlide() {
+  stopSpeech();
+  const s = slides[currentSlide];
+  const card = document.getElementById("slide-card");
+  const topic = document.getElementById("header-topic");
+  const counter = document.getElementById("step-counter");
+  const progress = document.getElementById("progress-bar");
+  const pill = document.getElementById("bottom-pill");
+
+  topic.textContent = s.topic;
+  counter.textContent = `Paso ${currentSlide + 1} de ${slides.length}`;
+  progress.style.width = `${((currentSlide + 1) / slides.length) * 100}%`;
+
+  card.className = `slide-card ${s.theme}`;
+  pill.style.backgroundColor = s.pillColor;
+
+  let bodyHTML = `<h2 class="slide-title">${s.title}</h2>`;
+
+  if (s.items) {
+    bodyHTML += `<div class="item-list">`;
+    s.items.forEach(item => {
+      const cleanEn = item.en.replace("→", " ");
+      bodyHTML += `
+        <div class="vocab-row">
+          <div>
+            <span class="en-word">${item.en}</span>
+            <span class="arrow-eq">=</span>
+            <span class="es-word">${item.es}</span>
+          </div>
+          <button class="speak-mini" onclick="speakEn('${cleanEn.replace(/'/g, "\'")}')">🔊 Escuchar</button>
+        </div>
+      `;
+    });
+    bodyHTML += `</div>`;
+  } else if (s.isQuiz) {
+    bodyHTML += `<div>`;
+    s.questions.forEach((item, qIdx) => {
+      bodyHTML += `
+        <div class="quiz-item" id="q-box-${qIdx}">
+          <div class="quiz-question">${item.q}</div>
+          <div class="quiz-options">
+            ${item.options.map((opt, oIdx) => `
+              <button class="opt-btn" onclick="checkAnswer(${qIdx}, ${oIdx}, this)">${opt}</button>
+            `).join("")}
+          </div>
+          <div class="feedback-msg" id="fb-${qIdx}"></div>
+        </div>
+      `;
+    });
+    bodyHTML += `</div>`;
+  } else {
+    bodyHTML += s.html;
+  }
+
+  card.innerHTML = bodyHTML;
+
+  document.getElementById("btn-prev").disabled = currentSlide === 0;
+  document.getElementById("btn-next").disabled = currentSlide === slides.length - 1;
+}
+
+function checkAnswer(qIdx, oIdx, btnEl) {
+  const qObj = slides[currentSlide].questions[qIdx];
+  const box = document.getElementById(`q-box-${qIdx}`);
+  const fb = document.getElementById(`fb-${qIdx}`);
+  const buttons = box.querySelectorAll(".opt-btn");
+
+  buttons.forEach(b => b.classList.remove("correct", "wrong"));
+
+  if (oIdx === qObj.correct) {
+    btnEl.classList.add("correct");
+    fb.style.color = "#134E2D";
+    fb.textContent = "✅ " + qObj.explanation;
+    speakEs(qObj.explanation);
+  } else {
+    btnEl.classList.add("wrong");
+    fb.style.color = "#922B21";
+    fb.textContent = "❌ Probá otra opción, ¡vos podés!";
+  }
+}
+
+function changeSlide(dir) {
+  const next = currentSlide + dir;
+  if (next >= 0 && next < slides.length) {
+    currentSlide = next;
+    renderSlide();
+  }
+}
+
+function goToSlide(idx) {
+  currentSlide = idx;
+  renderSlide();
+}
+
+function toggleFontSize() {
+  document.body.classList.toggle("large-text");
+}
+
+function stopSpeech() {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+function speakEn(text) {
+  stopSpeech();
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    u.rate = 0.85;
+    window.speechSynthesis.speak(u);
+  }
+}
+
+function speakEs(text) {
+  stopSpeech();
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "es-AR";
+    u.rate = 0.95;
+    window.speechSynthesis.speak(u);
+  }
+}
+
+function readCurrentSlide() {
+  const s = slides[currentSlide];
+  speakEs(s.voiceIntro);
+}
+
+renderSlide();
+</script>
+</body>
+</html>
