@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Check, Download, Film, Loader2, X } from 'lucide-react';
 import { VIDEO_MODULES } from '../data/curriculum';
 import type { VideoModule } from '../types/lesson';
@@ -139,23 +139,23 @@ export const DownloadCenterModal: React.FC<DownloadCenterModalProps> = ({
   }, [open, initialVideoId, autoStartedId, statuses]);
 
   // Auto-download when a building video transitions to ready while modal is open
-  const [downloadedOnReady, setDownloadedOnReady] = useState<Set<string>>(new Set());
+  const downloadedOnReadyRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!open) {
-      setDownloadedOnReady(new Set());
+      downloadedOnReadyRef.current.clear();
       return;
     }
     for (const st of Object.values(statuses)) {
       if (
         st.status === 'ready' &&
         autoStartedId === st.videoId &&
-        !downloadedOnReady.has(st.videoId)
+        !downloadedOnReadyRef.current.has(st.videoId)
       ) {
-        setDownloadedOnReady((prev) => new Set(prev).add(st.videoId));
+        downloadedOnReadyRef.current.add(st.videoId);
         triggerFileDownload(st.videoId, st.filename);
       }
     }
-  }, [open, statuses, autoStartedId, downloadedOnReady]);
+  }, [open, statuses, autoStartedId]);
 
   if (!open) return null;
 
