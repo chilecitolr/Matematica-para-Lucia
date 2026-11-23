@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import { VIDEO_MODULES, getChaptersForVideo } from '../src/data/curriculum.ts';
 import type { Chapter, LessonScene, VideoModule } from '../src/types/lesson.ts';
 import {
+  TtsQuotaError,
   createSilentPcm,
   extractWavPcm,
   isTtsCached,
@@ -127,6 +128,7 @@ async function buildVideoMp4(videoId: VideoModule['id']): Promise<string> {
     });
 
     const audioList: Array<Buffer | null> = [];
+    let quotaErrMessage: string | null = null;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const alreadyCached = isTtsCached(item.scene.narration);
@@ -140,7 +142,11 @@ async function buildVideoMp4(videoId: VideoModule['id']): Promise<string> {
             detail: `Pausa breve por límite de voz (${waitSec}s) · escena ${i + 1}/${items.length}...`,
           });
         });
-      } catch (err) {
+      } catch (err: any) {
+        if (err instanceof TtsQuotaError) {
+          quotaErrMessage = err.message;
+          break;
+        }
         console.warn(`TTS failed for ${item.scene.id}:`, err);
       }
       audioList.push(wav);
@@ -161,6 +167,11 @@ async function buildVideoMp4(videoId: VideoModule['id']): Promise<string> {
       process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'
     );
     const nonEmptyCount = audioList.filter((w) => w && w.length > 44).length;
+    if (quotaErrMessage) {
+      throw new Error(
+        `${quotaErrMessage} (Quedaron guardadas ${nonEmptyCount} de ${items.length} escenas con la voz cálida Kore).`
+      );
+    }
     if (hasApiKey && nonEmptyCount < items.length) {
       throw new Error(
         `Solo se pudieron narrar ${nonEmptyCount} de ${items.length} escenas por límite temporal de la API. Volvé a intentar en unos segundos (las escenas ya listas quedan guardadas).`

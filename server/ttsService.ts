@@ -8,9 +8,23 @@ if (!fs.existsSync(AUDIO_CACHE_DIR)) {
   fs.mkdirSync(AUDIO_CACHE_DIR, { recursive: true });
 }
 
+const TTS_MODELS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'] as const;
+const KORE_STYLE_PROMPT =
+  'Profesora argentina cálida, tranquila y paciente hablando español rioplatense claro y pausado para una alumna de 15 años, pronunciando con nitidez números, signos, fracciones y exponentes.';
+
 const memoryCache = new Map<string, Buffer>();
 const inFlightRequests = new Map<string, Promise<Buffer | null>>();
+const dailyQuotaBlockedUntil = new Map<string, number>();
 const MAX_MEM_ENTRIES = 200;
+
+export class TtsQuotaError extends Error {
+  statusCode = 429;
+  quotaExceeded = true;
+  constructor(message: string) {
+    super(message);
+    this.name = 'TtsQuotaError';
+  }
+}
 
 export function getAiClient(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -32,6 +46,43 @@ function hashText(text: string): string {
   return crypto.createHash('sha256').update(text).digest('hex').slice(0, 24);
 }
 
+function getApiKeyFingerprint(): string {
+  const apiKey = process.env.GEMINI_API_KEY || '';
+  return crypto.createHash('sha256').update(apiKey).digest('hex').slice(0, 12);
+}
+
+function isRateLimitError(msg: string): boolean {
+  return msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED');
+}
+
+function isDailyQuotaError(msg: string): boolean {
+  if (!isRateLimitError(msg)) return false;
+  if (msg.includes('PerDay') || msg.includes('RequestsPerDay')) return true;
+  const retrySecMatch = msg.match(/retryDelay["']?\s*:\s*["']?(\d+)s/i);
+  if (retrySecMatch && Number(retrySecMatch[1]) > 120) return true;
+  if (/\b\d+h\d*m/i.test(msg)) return true;
+  return false;
+}
+
+function getModelBlockKey(model: string): string {
+  return `${getApiKeyFingerprint()}:${model}`;
+}
+
+function isModelDailyBlocked(model: string): boolean {
+  const until = dailyQuotaBlockedUntil.get(getModelBlockKey(model));
+  if (!until) return false;
+  if (Date.now() >= until) {
+    dailyQuotaBlockedUntil.delete(getModelBlockKey(model));
+    return false;
+  }
+  return true;
+}
+
+function markModelDailyBlocked(model: string) {
+  // Re-check after 10 minutes or immediately if GEMINI_API_KEY changes
+  dailyQuotaBlockedUntil.set(getModelBlockKey(model), Date.now() + 10 * 60 * 1000);
+}
+
 export function isTtsCached(rawText: string): boolean {
   const text = rawText.trim().slice(0, 1200);
   if (!text) return false;
@@ -40,8 +91,45 @@ export function isTtsCached(rawText: string): boolean {
   return fs.existsSync(path.join(AUDIO_CACHE_DIR, `${key}.wav`));
 }
 
+async function generateWithKoreModel(
+  ai: GoogleGenAI,
+  model: (typeof TTS_MODELS)[number],
+  text: string
+): Promise<Buffer | null> {
+  const response = await ai.models.generateContent({
+    model,
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text,
+            speechMetadata: {
+              style: KORE_STYLE_PROMPT,
+            },
+          } as any,
+        ],
+      },
+    ],
+    config: {
+      responseModalities: ['AUDIO'],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName: 'Kore' },
+        },
+      },
+    },
+  });
+
+  const base64Audio =
+    response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  if (!base64Audio) return null;
+  return Buffer.from(base64Audio, 'base64');
+}
+
 /**
- * Generates or retrieves cached 24kHz mono 16-bit WAV buffer for Spanish Argentine narration.
+ * Generates or retrieves cached 24kHz mono 16-bit WAV buffer for Spanish Argentine narration
+ * using the same Kore voice across primary and fallback Gemini TTS models.
  */
 export async function synthesizeNarrationWav(rawText: string): Promise<Buffer | null> {
   const text = rawText.trim().slice(0, 1200);
@@ -70,45 +158,52 @@ export async function synthesizeNarrationWav(rawText: string): Promise<Buffer | 
 
   const requestPromise = (async () => {
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash-lite-tts',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text,
-                speechMetadata: {
-                  style:
-                    'Profesora argentina cálida, tranquila y paciente hablando español rioplatense claro y pausado para una alumna de 15 años, pronunciando con nitidez números, signos, fracciones y exponentes.',
-                },
-              } as any,
-            ],
-          },
-        ],
-        config: {
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
-            },
-          },
-        },
-      });
+      let lastError: any = null;
+      let sawDailyQuota = false;
 
-      const base64Audio =
-        response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (!base64Audio) return null;
+      for (const model of TTS_MODELS) {
+        if (isModelDailyBlocked(model)) {
+          sawDailyQuota = true;
+          continue;
+        }
+        try {
+          const wavBuffer = await generateWithKoreModel(ai, model, text);
+          if (!wavBuffer || wavBuffer.length <= 44) continue;
 
-      const wavBuffer = Buffer.from(base64Audio, 'base64');
-      fs.writeFileSync(diskPath, wavBuffer);
+          fs.writeFileSync(diskPath, wavBuffer);
 
-      if (memoryCache.size >= MAX_MEM_ENTRIES) {
-        const oldest = memoryCache.keys().next().value;
-        if (oldest) memoryCache.delete(oldest);
+          if (memoryCache.size >= MAX_MEM_ENTRIES) {
+            const oldest = memoryCache.keys().next().value;
+            if (oldest) memoryCache.delete(oldest);
+          }
+          memoryCache.set(key, wavBuffer);
+          return wavBuffer;
+        } catch (err: any) {
+          lastError = err;
+          const msg = String(err?.message || err);
+          if (isDailyQuotaError(msg)) {
+            sawDailyQuota = true;
+            markModelDailyBlocked(model);
+            continue;
+          }
+          if (isRateLimitError(msg)) {
+            // Try secondary Kore TTS model on RPM limit as well
+            continue;
+          }
+          throw err;
+        }
       }
-      memoryCache.set(key, wavBuffer);
-      return wavBuffer;
+
+      if (sawDailyQuota) {
+        throw new TtsQuotaError(
+          'Se alcanzó el límite diario gratuito de la voz cálida de Gemini (Kore). Para generar los 4 videos completos en un día, seleccioná una clave API con facturación en Settings > Secrets.'
+        );
+      }
+
+      if (lastError) {
+        throw lastError;
+      }
+      return null;
     } finally {
       inFlightRequests.delete(key);
     }
@@ -122,14 +217,22 @@ export async function synthesizeNarrationLive(rawText: string): Promise<Buffer |
   if (isTtsCached(rawText)) {
     return synthesizeNarrationWav(rawText);
   }
-  const delaysMs = [1200, 2800, 5000];
+  const delaysMs = [1200, 2800];
   for (let attempt = 0; attempt <= delaysMs.length; attempt++) {
     try {
       const wav = await synthesizeNarrationWav(rawText);
       if (wav && wav.length > 44) return wav;
     } catch (err: any) {
+      if (err instanceof TtsQuotaError) {
+        throw err;
+      }
       const msg = String(err?.message || err);
-      const is429 = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED');
+      if (isDailyQuotaError(msg)) {
+        throw new TtsQuotaError(
+          'Se alcanzó el límite diario gratuito de la voz cálida de Gemini (Kore). Para generar los 4 videos completos en un día, seleccioná una clave API con facturación en Settings > Secrets.'
+        );
+      }
+      const is429 = isRateLimitError(msg);
       if (attempt < delaysMs.length && is429) {
         await new Promise((r) => setTimeout(r, delaysMs[attempt]));
         continue;
@@ -152,15 +255,23 @@ export async function synthesizeNarrationWithRetry(
     return synthesizeNarrationWav(rawText);
   }
 
-  const delaysMs = [6000, 12000, 20000, 30000];
+  const delaysMs = [6000, 12000, 20000];
   for (let attempt = 0; attempt <= delaysMs.length; attempt++) {
     try {
       const wav = await synthesizeNarrationWav(rawText);
       if (wav && wav.length > 44) return wav;
       return wav;
     } catch (err: any) {
+      if (err instanceof TtsQuotaError) {
+        throw err;
+      }
       const msg = String(err?.message || err);
-      const is429 = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED');
+      if (isDailyQuotaError(msg)) {
+        throw new TtsQuotaError(
+          'Se alcanzó el límite diario gratuito de la voz cálida de Gemini (Kore). Para generar los 4 videos completos en un día, seleccioná una clave API con facturación en Settings > Secrets.'
+        );
+      }
+      const is429 = isRateLimitError(msg);
       if (attempt < delaysMs.length && is429) {
         const waitMs = delaysMs[attempt];
         onRateLimitWait?.(Math.round(waitMs / 1000));

@@ -146,12 +146,18 @@ export function useNarrator({
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [ttsQuotaExceeded, setTtsQuotaExceeded] = useState(false);
+  const [ttsNotice, setTtsNotice] = useState<string | null>(null);
 
   // Cache audio WAV data URLs keyed by trimmed narration text
   const audioCacheRef = useRef<Map<string, string>>(new Map());
-  const inFlightClientRef = useRef<Map<string, Promise<string | null>>>(new Map());
+  const inFlightClientRef = useRef<
+    Map<string, Promise<{ dataUrl: string | null; quotaExceeded?: boolean; error?: string }>>
+  >(new Map());
   const sharedAudioRef = useRef<HTMLAudioElement | null>(null);
   const unlockedRef = useRef(false);
+  const isUnlockingRef = useRef(false);
+  const quotaExceededRef = useRef(false);
   const timerRef = useRef<number | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onSceneComplete);
@@ -169,10 +175,11 @@ export function useNarrator({
    * across async TTS fetches and scene transitions.
    */
   const unlockAudio = useCallback(() => {
-    if (unlockedRef.current) return;
+    if (unlockedRef.current || isUnlockingRef.current) return;
     const audio = getSharedAudio();
     if (!audio) return;
     try {
+      isUnlockingRef.current = true;
       audio.src = SILENT_UNLOCK_WAV;
       audio.volume = 0.01;
       const p = audio.play();
@@ -182,50 +189,68 @@ export function useNarrator({
           audio.currentTime = 0;
           audio.volume = 1;
           unlockedRef.current = true;
+          isUnlockingRef.current = false;
         }).catch(() => {
           audio.volume = 1;
+          isUnlockingRef.current = false;
         });
+      } else {
+        isUnlockingRef.current = false;
       }
     } catch {
       audio.volume = 1;
+      isUnlockingRef.current = false;
     }
   }, [getSharedAudio]);
 
-  const fetchTtsDataUrl = useCallback(async (rawText: string): Promise<string | null> => {
-    const clean = rawText.trim();
-    if (!clean) return null;
+  const fetchTtsDataUrl = useCallback(
+    async (
+      rawText: string
+    ): Promise<{ dataUrl: string | null; quotaExceeded?: boolean; error?: string }> => {
+      const clean = rawText.trim();
+      if (!clean) return { dataUrl: null };
 
-    const hit = audioCacheRef.current.get(clean);
-    if (hit) return hit;
+      const hit = audioCacheRef.current.get(clean);
+      if (hit) return { dataUrl: hit };
 
-    const pending = inFlightClientRef.current.get(clean);
-    if (pending) return pending;
+      const pending = inFlightClientRef.current.get(clean);
+      if (pending) return pending;
 
-    const req = (async () => {
-      try {
-        const res = await fetch('/api/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: clean }),
-        });
-        if (!res.ok) return null;
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) return null;
-        const data = await res.json();
-        if (!data?.audioBase64) return null;
-        const dataUrl = `data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`;
-        audioCacheRef.current.set(clean, dataUrl);
-        return dataUrl;
-      } catch {
-        return null;
-      } finally {
-        inFlightClientRef.current.delete(clean);
-      }
-    })();
+      const req = (async () => {
+        try {
+          const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: clean }),
+          });
+          const contentType = res.headers.get('content-type') || '';
+          const data = contentType.includes('application/json') ? await res.json() : null;
 
-    inFlightClientRef.current.set(clean, req);
-    return req;
-  }, []);
+          if (!res.ok) {
+            const isQuota = res.status === 429 || data?.quotaExceeded === true;
+            return {
+              dataUrl: null,
+              quotaExceeded: isQuota,
+              error: data?.error,
+            };
+          }
+
+          if (!data?.audioBase64) return { dataUrl: null };
+          const dataUrl = `data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`;
+          audioCacheRef.current.set(clean, dataUrl);
+          return { dataUrl };
+        } catch {
+          return { dataUrl: null };
+        } finally {
+          inFlightClientRef.current.delete(clean);
+        }
+      })();
+
+      inFlightClientRef.current.set(clean, req);
+      return req;
+    },
+    []
+  );
 
   const stopAll = useCallback(() => {
     if (timerRef.current !== null) {
@@ -236,7 +261,7 @@ export function useNarrator({
       window.clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
-    if (sharedAudioRef.current) {
+    if (sharedAudioRef.current && !isUnlockingRef.current) {
       const audio = sharedAudioRef.current;
       audio.pause();
       audio.onended = null;
@@ -368,10 +393,14 @@ export function useNarrator({
         return;
       }
 
+      isUnlockingRef.current = false;
       audio.pause();
       audio.src = dataUrl;
       audio.volume = 1;
       audio.playbackRate = playbackRate;
+      quotaExceededRef.current = false;
+      setTtsQuotaExceeded(false);
+      setTtsNotice(null);
       setVoiceEngine('gemini');
       setIsSpeaking(true);
 
@@ -394,10 +423,15 @@ export function useNarrator({
         if (!cancelled) speakWithBrowser();
       });
 
-      // Quietly prefetch next scene audio so transitions are instant with the same warm voice
-      if (nextText && nextText.trim() && !audioCacheRef.current.has(nextText.trim())) {
+      // Quietly prefetch next scene audio when quota is available
+      if (
+        !quotaExceededRef.current &&
+        nextText &&
+        nextText.trim() &&
+        !audioCacheRef.current.has(nextText.trim())
+      ) {
         window.setTimeout(() => {
-          if (!cancelled) {
+          if (!cancelled && !quotaExceededRef.current) {
             fetchTtsDataUrl(nextText).catch(() => {});
           }
         }, 1200);
@@ -421,16 +455,24 @@ export function useNarrator({
       }
 
       setIsLoadingAudio(true);
-      const dataUrl = await fetchTtsDataUrl(clean);
+      const result = await fetchTtsDataUrl(clean);
       if (cancelled) return;
       setIsLoadingAudio(false);
 
-      if (!dataUrl) {
+      if (!result.dataUrl) {
+        if (result.quotaExceeded) {
+          quotaExceededRef.current = true;
+          setTtsQuotaExceeded(true);
+          setTtsNotice(
+            result.error ||
+              'Se alcanzó el límite diario gratuito de la voz cálida (Kore). Para escuchar todos los videos con esa misma voz sin límite, seleccioná una clave con facturación en Settings > Secrets.'
+          );
+        }
         speakWithBrowser();
         return;
       }
 
-      playWavDataUrl(dataUrl);
+      playWavDataUrl(result.dataUrl);
     };
 
     runNarration();
@@ -459,5 +501,14 @@ export function useNarrator({
     }
   }, [playbackRate]);
 
-  return { voiceEngine, isLoadingAudio, isSpeaking, progress, stopAll, unlockAudio };
+  return {
+    voiceEngine,
+    isLoadingAudio,
+    isSpeaking,
+    progress,
+    ttsQuotaExceeded,
+    ttsNotice,
+    stopAll,
+    unlockAudio,
+  };
 }

@@ -3,7 +3,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { synthesizeNarrationLive } from './server/ttsService.ts';
+import { TtsQuotaError, synthesizeNarrationLive } from './server/ttsService.ts';
 import {
   ensureVideoBuilt,
   getAllVideoStatuses,
@@ -54,9 +54,16 @@ app.post('/api/tts', async (req, res) => {
     });
   } catch (err: any) {
     const message = err?.message || 'Error al generar voz.';
+    const isQuota =
+      err instanceof TtsQuotaError ||
+      err?.quotaExceeded === true ||
+      message.includes('429') ||
+      message.includes('RESOURCE_EXHAUSTED');
+
     console.error('TTS error:', message);
-    res.status(500).json({
+    res.status(isQuota ? 429 : 500).json({
       error: message,
+      quotaExceeded: isQuota,
       fallback: true,
     });
   }

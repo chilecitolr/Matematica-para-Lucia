@@ -180,7 +180,15 @@ export default function App() {
     handleNextScene();
   }, [isPracticeScene, handleNextScene]);
 
-  const { isLoadingAudio, isSpeaking, voiceEngine, progress, unlockAudio } = useNarrator({
+  const {
+    isLoadingAudio,
+    isSpeaking,
+    voiceEngine,
+    progress,
+    ttsQuotaExceeded,
+    ttsNotice,
+    unlockAudio,
+  } = useNarrator({
     text: currentItem?.scene.narration || '',
     nextText: nextItem?.scene.narration || '',
     sceneId: `${currentItem?.scene.id || 'none'}-${replayNonce}`,
@@ -520,6 +528,12 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {ttsQuotaExceeded && ttsNotice && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-950 leading-relaxed">
+                  <strong>Aviso de voz:</strong> {ttsNotice}
+                </div>
+              )}
             </div>
           </section>
 
@@ -663,7 +677,7 @@ export default function App() {
               <div className="font-display text-base font-bold text-slate-900">
                 Este material está adaptado para Lucía.
               </div>
-              <div className="font-display text-sm font-semibold text-blue-800">
+              <div className="font-display text-sm font-semibold bg-[#f50d88] text-[#f4f5f6]">
                 Con amor, su papá!!
               </div>
             </div>
