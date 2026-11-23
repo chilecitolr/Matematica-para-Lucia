@@ -27,6 +27,75 @@ interface FlatSceneItem {
   globalIndex: number;
 }
 
+const VIDEO_THEMES: Record<
+  VideoModule['id'],
+  {
+    inactive: string;
+    active: string;
+    dot: string;
+  }
+> = {
+  'video-1': {
+    inactive: 'bg-blue-50/80 text-blue-900 border-blue-200 hover:bg-blue-100',
+    active: 'bg-blue-700 text-white border-blue-700 shadow-sm',
+    dot: 'bg-blue-600',
+  },
+  'video-2': {
+    inactive: 'bg-orange-50/80 text-orange-900 border-orange-200 hover:bg-orange-100',
+    active: 'bg-orange-700 text-white border-orange-700 shadow-sm',
+    dot: 'bg-orange-600',
+  },
+  'video-3': {
+    inactive: 'bg-emerald-50/80 text-emerald-900 border-emerald-200 hover:bg-emerald-100',
+    active: 'bg-emerald-700 text-white border-emerald-700 shadow-sm',
+    dot: 'bg-emerald-600',
+  },
+  'video-4': {
+    inactive: 'bg-indigo-50/80 text-indigo-900 border-indigo-200 hover:bg-indigo-100',
+    active: 'bg-indigo-700 text-white border-indigo-700 shadow-sm',
+    dot: 'bg-indigo-600',
+  },
+};
+
+const CHAPTER_PALETTE = [
+  {
+    card: 'bg-blue-50/45 border-blue-200',
+    kicker: 'text-blue-700',
+    title: 'text-blue-950',
+    btnInactive: 'bg-white/90 text-slate-700 border-blue-100 hover:bg-blue-50 hover:border-blue-300',
+    btnActive: 'bg-blue-700 text-white border-blue-700 font-semibold shadow-sm',
+    practiceInactive: 'text-amber-700',
+    practiceActive: 'text-blue-100',
+  },
+  {
+    card: 'bg-orange-50/45 border-orange-200',
+    kicker: 'text-orange-700',
+    title: 'text-orange-950',
+    btnInactive: 'bg-white/90 text-slate-700 border-orange-100 hover:bg-orange-50 hover:border-orange-300',
+    btnActive: 'bg-orange-700 text-white border-orange-700 font-semibold shadow-sm',
+    practiceInactive: 'text-amber-800',
+    practiceActive: 'text-orange-100',
+  },
+  {
+    card: 'bg-emerald-50/45 border-emerald-200',
+    kicker: 'text-emerald-700',
+    title: 'text-emerald-950',
+    btnInactive: 'bg-white/90 text-slate-700 border-emerald-100 hover:bg-emerald-50 hover:border-emerald-300',
+    btnActive: 'bg-emerald-700 text-white border-emerald-700 font-semibold shadow-sm',
+    practiceInactive: 'text-amber-700',
+    practiceActive: 'text-emerald-100',
+  },
+  {
+    card: 'bg-indigo-50/45 border-indigo-200',
+    kicker: 'text-indigo-700',
+    title: 'text-indigo-950',
+    btnInactive: 'bg-white/90 text-slate-700 border-indigo-100 hover:bg-indigo-50 hover:border-indigo-300',
+    btnActive: 'bg-indigo-700 text-white border-indigo-700 font-semibold shadow-sm',
+    practiceInactive: 'text-amber-700',
+    practiceActive: 'text-indigo-100',
+  },
+];
+
 export default function App() {
   const [activeVideoId, setActiveVideoId] = useState<VideoModule['id']>('video-1');
   const [sceneIndex, setSceneIndex] = useState(0);
@@ -147,25 +216,29 @@ export default function App() {
             Matemática Paso a Paso
           </a>
 
-          {/* Zone 2: 4 concise single-line nav links */}
+          {/* Zone 2: 4 concise single-line color-coded nav buttons */}
           <nav
             aria-label="Videos de la serie"
-            className="hidden lg:flex items-center gap-6 text-sm font-medium"
+            className="hidden lg:flex items-center gap-2 text-sm font-medium"
           >
             {VIDEO_MODULES.map((vid) => {
               const active = vid.id === activeVideoId;
+              const theme = VIDEO_THEMES[vid.id];
               return (
                 <button
                   key={vid.id}
                   type="button"
                   onClick={() => handleSelectVideo(vid.id)}
-                  className={`py-1 border-b-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                    active
-                      ? 'border-blue-700 text-blue-700 font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                    active ? `${theme.active} font-semibold` : theme.inactive
                   }`}
                 >
-                  {vid.shortLabel}
+                  <span
+                    className={`w-2 h-2 rounded-sm shrink-0 ${
+                      active ? 'bg-white' : theme.dot
+                    }`}
+                  />
+                  <span>{vid.shortLabel}</span>
                 </button>
               );
             })}
@@ -195,18 +268,22 @@ export default function App() {
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap lg:hidden items-center gap-2">
           {VIDEO_MODULES.map((vid) => {
             const active = vid.id === activeVideoId;
+            const theme = VIDEO_THEMES[vid.id];
             return (
               <button
                 key={vid.id}
                 type="button"
                 onClick={() => handleSelectVideo(vid.id)}
-                className={`px-3 py-2.5 min-h-[44px] rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap border cursor-pointer text-center ${
-                  active
-                    ? 'bg-blue-700 text-white border-blue-700'
-                    : 'bg-white text-slate-700 border-slate-200'
+                className={`inline-flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap border cursor-pointer text-center transition-colors ${
+                  active ? `${theme.active} font-semibold` : theme.inactive
                 }`}
               >
-                {vid.shortLabel}
+                <span
+                  className={`w-2 h-2 rounded-sm shrink-0 ${
+                    active ? 'bg-white' : theme.dot
+                  }`}
+                />
+                <span>{vid.shortLabel}</span>
               </button>
             );
           })}
@@ -226,9 +303,7 @@ export default function App() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-slate-500">
-              <span>Escuela Privada Gabriela Mistral</span>
-              <span aria-hidden="true">·</span>
-              <span>3.er año · Trabajo Práctico Integrador Final</span>
+              <span>Trabajo Práctico Integrador Final</span>
               <span aria-hidden="true">·</span>
               <span>{totalChaptersCount} capítulos en 4 videos cortos</span>
             </div>
@@ -522,23 +597,27 @@ export default function App() {
                 <BookOpen className="w-4 h-4 text-slate-400" />
               </div>
 
-              <div className="space-y-4">
-                {videoChapters.map((chapter) => {
+              <div className="space-y-3.5">
+                {videoChapters.map((chapter, chIdx) => {
                   const chapterScenes = flatScenes.filter(
                     (f) => f.chapter.id === chapter.id
                   );
+                  const pal = CHAPTER_PALETTE[chIdx % CHAPTER_PALETTE.length];
                   return (
-                    <div key={chapter.id} className="space-y-2 pb-3 border-b border-slate-100 last:border-b-0 last:pb-0">
+                    <div
+                      key={chapter.id}
+                      className={`space-y-2.5 p-3.5 rounded-xl border ${pal.card}`}
+                    >
                       <div>
-                        <div className="text-xs font-medium text-slate-500">
+                        <div className={`text-xs font-semibold ${pal.kicker}`}>
                           Capítulo {chapter.number} · {chapter.activityRef}
                         </div>
-                        <div className="font-semibold text-sm text-slate-900">
+                        <div className={`font-display font-bold text-sm ${pal.title}`}>
                           {chapter.title}
                         </div>
                       </div>
 
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         {chapterScenes.map((item) => {
                           const active = item.globalIndex === sceneIndex;
                           const isPractice = item.scene.phase === 'practica';
@@ -547,15 +626,17 @@ export default function App() {
                               key={item.scene.id}
                               type="button"
                               onClick={() => setSceneIndex(item.globalIndex)}
-                              className={`w-full text-left px-3 py-2.5 min-h-[44px] rounded-lg text-xs sm:text-sm transition-colors flex items-center justify-between gap-2 cursor-pointer ${
-                                active
-                                  ? 'bg-blue-50 text-blue-900 font-semibold border border-blue-200'
-                                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
+                              className={`w-full text-left px-3 py-2.5 min-h-[44px] rounded-lg border text-xs sm:text-sm transition-colors flex items-center justify-between gap-2 cursor-pointer ${
+                                active ? pal.btnActive : pal.btnInactive
                               }`}
                             >
                               <span className="leading-snug">{item.scene.headline}</span>
                               {isPractice && (
-                                <span className="text-[11px] font-semibold text-amber-700 shrink-0">
+                                <span
+                                  className={`text-[11px] font-semibold shrink-0 ${
+                                    active ? pal.practiceActive : pal.practiceInactive
+                                  }`}
+                                >
                                   Práctica
                                 </span>
                               )}
