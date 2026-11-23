@@ -9,6 +9,7 @@ if (!fs.existsSync(AUDIO_CACHE_DIR)) {
 }
 
 const memoryCache = new Map<string, Buffer>();
+const inFlightRequests = new Map<string, Promise<Buffer | null>>();
 const MAX_MEM_ENTRIES = 200;
 
 export function getAiClient(): GoogleGenAI | null {
@@ -59,48 +60,88 @@ export async function synthesizeNarrationWav(rawText: string): Promise<Buffer | 
     }
   }
 
+  const existingPromise = inFlightRequests.get(key);
+  if (existingPromise) {
+    return existingPromise;
+  }
+
   const ai = getAiClient();
   if (!ai) return null;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3.8-flash-lite-tts',
-    contents: [
-      {
-        role: 'user',
-        parts: [
+  const requestPromise = (async () => {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash-lite-tts',
+        contents: [
           {
-            text,
-            speechMetadata: {
-              style:
-                'Profesora argentina cálida, tranquila y paciente hablando español rioplatense claro y pausado para una alumna de 15 años, pronunciando con nitidez números, signos, fracciones y exponentes.',
-            },
-          } as any,
+            role: 'user',
+            parts: [
+              {
+                text,
+                speechMetadata: {
+                  style:
+                    'Profesora argentina cálida, tranquila y paciente hablando español rioplatense claro y pausado para una alumna de 15 años, pronunciando con nitidez números, signos, fracciones y exponentes.',
+                },
+              } as any,
+            ],
+          },
         ],
-      },
-    ],
-    config: {
-      responseModalities: ['AUDIO'],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: 'Kore' },
+        config: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: 'Kore' },
+            },
+          },
         },
-      },
-    },
-  });
+      });
 
-  const base64Audio =
-    response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!base64Audio) return null;
+      const base64Audio =
+        response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!base64Audio) return null;
 
-  const wavBuffer = Buffer.from(base64Audio, 'base64');
-  fs.writeFileSync(diskPath, wavBuffer);
+      const wavBuffer = Buffer.from(base64Audio, 'base64');
+      fs.writeFileSync(diskPath, wavBuffer);
 
-  if (memoryCache.size >= MAX_MEM_ENTRIES) {
-    const oldest = memoryCache.keys().next().value;
-    if (oldest) memoryCache.delete(oldest);
+      if (memoryCache.size >= MAX_MEM_ENTRIES) {
+        const oldest = memoryCache.keys().next().value;
+        if (oldest) memoryCache.delete(oldest);
+      }
+      memoryCache.set(key, wavBuffer);
+      return wavBuffer;
+    } finally {
+      inFlightRequests.delete(key);
+    }
+  })();
+
+  inFlightRequests.set(key, requestPromise);
+  return requestPromise;
+}
+
+export async function synthesizeNarrationLive(rawText: string): Promise<Buffer | null> {
+  if (isTtsCached(rawText)) {
+    return synthesizeNarrationWav(rawText);
   }
-  memoryCache.set(key, wavBuffer);
-  return wavBuffer;
+  const delaysMs = [1200, 2800, 5000];
+  for (let attempt = 0; attempt <= delaysMs.length; attempt++) {
+    try {
+      const wav = await synthesizeNarrationWav(rawText);
+      if (wav && wav.length > 44) return wav;
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      const is429 = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED');
+      if (attempt < delaysMs.length && is429) {
+        await new Promise((r) => setTimeout(r, delaysMs[attempt]));
+        continue;
+      }
+      if (attempt < 1) {
+        await new Promise((r) => setTimeout(r, 800));
+        continue;
+      }
+      throw err;
+    }
+  }
+  return null;
 }
 
 export async function synthesizeNarrationWithRetry(

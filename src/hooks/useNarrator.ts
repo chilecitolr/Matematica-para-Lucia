@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface NarratorOptions {
   text: string;
+  nextText?: string;
   sceneId: string;
   isPlaying: boolean;
   muted: boolean;
@@ -9,6 +10,92 @@ interface NarratorOptions {
   fallbackDurationMs: number;
   autoAdvance: boolean;
   onSceneComplete: () => void;
+}
+
+// Tiny 44-byte silent WAV to unlock a persistent HTMLAudioElement on mobile/desktop click
+const SILENT_UNLOCK_WAV =
+  'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
+const MALE_VOICE_NAMES = [
+  'tomas',
+  'tomás',
+  'pablo',
+  'diego',
+  'jorge',
+  'carlos',
+  'raul',
+  'raúl',
+  'alvaro',
+  'álvaro',
+  'andres',
+  'andrés',
+  'mateo',
+  'pedro',
+  'miguel',
+  'luis',
+  'enrique',
+  'antonio',
+  'manuel',
+  'male',
+  'hombre',
+];
+
+const FEMALE_VOICE_NAMES = [
+  'elena',
+  'sabina',
+  'helena',
+  'luciana',
+  'paulina',
+  'paloma',
+  'sofia',
+  'sofía',
+  'camila',
+  'valentina',
+  'monica',
+  'mónica',
+  'laura',
+  'maria',
+  'maría',
+  'salome',
+  'salomé',
+  'ximena',
+  'andrea',
+  'isabela',
+  'dalia',
+  'elvira',
+  'google español',
+  'female',
+  'mujer',
+];
+
+function pickWarmFemaleSpanishVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
+  const spanish = voices.filter((v) => v.lang.toLowerCase().startsWith('es'));
+  if (spanish.length === 0) return undefined;
+
+  let bestVoice: SpeechSynthesisVoice | undefined;
+  let bestScore = -999;
+
+  for (const v of spanish) {
+    const name = v.name.toLowerCase();
+    const lang = v.lang.toLowerCase();
+    let score = 0;
+
+    if (lang === 'es-ar') score += 40;
+    else if (lang === 'es-419' || lang === 'es-us' || lang === 'es-uy') score += 30;
+    else if (lang === 'es-mx' || lang === 'es-co') score += 20;
+    else score += 10;
+
+    if (FEMALE_VOICE_NAMES.some((f) => name.includes(f))) score += 60;
+    if (MALE_VOICE_NAMES.some((m) => name.includes(m))) score -= 120;
+    if (name.includes('natural') || name.includes('google')) score += 15;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestVoice = v;
+    }
+  }
+
+  return bestVoice;
 }
 
 export function playSoftFeedbackTone(kind: 'gentle' | 'success') {
@@ -46,6 +133,7 @@ export function playSoftFeedbackTone(kind: 'gentle' | 'success') {
 
 export function useNarrator({
   text,
+  nextText,
   sceneId,
   isPlaying,
   muted,
@@ -59,12 +147,85 @@ export function useNarrator({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  // Cache audio WAV data URLs keyed by trimmed narration text
   const audioCacheRef = useRef<Map<string, string>>(new Map());
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const inFlightClientRef = useRef<Map<string, Promise<string | null>>>(new Map());
+  const sharedAudioRef = useRef<HTMLAudioElement | null>(null);
+  const unlockedRef = useRef(false);
   const timerRef = useRef<number | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onSceneComplete);
   onCompleteRef.current = onSceneComplete;
+
+  const getSharedAudio = useCallback(() => {
+    if (!sharedAudioRef.current && typeof Audio !== 'undefined') {
+      sharedAudioRef.current = new Audio();
+    }
+    return sharedAudioRef.current;
+  }, []);
+
+  /**
+   * Call synchronously from Play / Repeat button click to keep mobile/desktop audio unlocked
+   * across async TTS fetches and scene transitions.
+   */
+  const unlockAudio = useCallback(() => {
+    if (unlockedRef.current) return;
+    const audio = getSharedAudio();
+    if (!audio) return;
+    try {
+      audio.src = SILENT_UNLOCK_WAV;
+      audio.volume = 0.01;
+      const p = audio.play();
+      if (p && typeof p.then === 'function') {
+        p.then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = 1;
+          unlockedRef.current = true;
+        }).catch(() => {
+          audio.volume = 1;
+        });
+      }
+    } catch {
+      audio.volume = 1;
+    }
+  }, [getSharedAudio]);
+
+  const fetchTtsDataUrl = useCallback(async (rawText: string): Promise<string | null> => {
+    const clean = rawText.trim();
+    if (!clean) return null;
+
+    const hit = audioCacheRef.current.get(clean);
+    if (hit) return hit;
+
+    const pending = inFlightClientRef.current.get(clean);
+    if (pending) return pending;
+
+    const req = (async () => {
+      try {
+        const res = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: clean }),
+        });
+        if (!res.ok) return null;
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) return null;
+        const data = await res.json();
+        if (!data?.audioBase64) return null;
+        const dataUrl = `data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`;
+        audioCacheRef.current.set(clean, dataUrl);
+        return dataUrl;
+      } catch {
+        return null;
+      } finally {
+        inFlightClientRef.current.delete(clean);
+      }
+    })();
+
+    inFlightClientRef.current.set(clean, req);
+    return req;
+  }, []);
 
   const stopAll = useCallback(() => {
     if (timerRef.current !== null) {
@@ -75,12 +236,12 @@ export function useNarrator({
       window.clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
-    if (audioElRef.current) {
-      audioElRef.current.pause();
-      audioElRef.current.onended = null;
-      audioElRef.current.onerror = null;
-      audioElRef.current.ontimeupdate = null;
-      audioElRef.current = null;
+    if (sharedAudioRef.current) {
+      const audio = sharedAudioRef.current;
+      audio.pause();
+      audio.onended = null;
+      audio.onerror = null;
+      audio.ontimeupdate = null;
     }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -138,50 +299,79 @@ export function useNarrator({
       }
 
       setVoiceEngine('browser');
-      const utterance = new SpeechSynthesisUtterance(text);
-      const voices = window.speechSynthesis.getVoices();
-      const preferred =
-        voices.find((v) => v.lang.toLowerCase() === 'es-ar') ||
-        voices.find((v) => v.lang.toLowerCase() === 'es-419') ||
-        voices.find((v) => v.lang.toLowerCase().startsWith('es-'));
-      if (preferred) {
-        utterance.voice = preferred;
-      }
-      utterance.lang = preferred?.lang || 'es-AR';
-      utterance.rate = Math.max(0.7, Math.min(1.15, playbackRate * 0.92));
-      utterance.pitch = 1.0;
 
-      utterance.onstart = () => {
-        if (!cancelled) {
-          setIsSpeaking(true);
+      const startSpeech = () => {
+        if (cancelled) return;
+        const utterance = new SpeechSynthesisUtterance(text);
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = pickWarmFemaleSpanishVoice(voices);
+        if (preferred) {
+          utterance.voice = preferred;
+        }
+        utterance.lang = preferred?.lang || 'es-AR';
+        utterance.rate = Math.max(0.72, Math.min(1.1, playbackRate * 0.92));
+        utterance.pitch = 1.05;
+
+        utterance.onstart = () => {
+          if (!cancelled) {
+            setIsSpeaking(true);
+            startTimerProgress(estimatedMs);
+          }
+        };
+        utterance.onboundary = (ev) => {
+          if (!cancelled && text.length > 0 && typeof ev.charIndex === 'number') {
+            setProgress(Math.min(1, ev.charIndex / text.length));
+          }
+        };
+        utterance.onend = () => {
+          if (cancelled) return;
+          setProgress(1);
+          setIsSpeaking(false);
+          scheduleNext(1800);
+        };
+        utterance.onerror = () => {
+          if (cancelled) return;
+          setIsSpeaking(false);
           startTimerProgress(estimatedMs);
-        }
-      };
-      utterance.onboundary = (ev) => {
-        if (!cancelled && text.length > 0 && typeof ev.charIndex === 'number') {
-          setProgress(Math.min(1, ev.charIndex / text.length));
-        }
-      };
-      utterance.onend = () => {
-        if (cancelled) return;
-        setProgress(1);
-        setIsSpeaking(false);
-        scheduleNext(1800);
-      };
-      utterance.onerror = () => {
-        if (cancelled) return;
-        setIsSpeaking(false);
-        startTimerProgress(estimatedMs);
-        scheduleNext(estimatedMs);
+          scheduleNext(estimatedMs);
+        };
+
+        window.speechSynthesis.speak(utterance);
       };
 
-      window.speechSynthesis.speak(utterance);
+      const initialVoices = window.speechSynthesis.getVoices();
+      if (initialVoices.length > 0) {
+        startSpeech();
+      } else {
+        let fired = false;
+        const onVoicesChanged = () => {
+          if (fired) return;
+          fired = true;
+          window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+          startSpeech();
+        };
+        window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
+        window.setTimeout(() => {
+          if (!fired) {
+            fired = true;
+            window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+            startSpeech();
+          }
+        }, 350);
+      }
     };
 
     const playWavDataUrl = (dataUrl: string) => {
-      const audio = new Audio(dataUrl);
+      const audio = getSharedAudio();
+      if (!audio) {
+        speakWithBrowser();
+        return;
+      }
+
+      audio.pause();
+      audio.src = dataUrl;
+      audio.volume = 1;
       audio.playbackRate = playbackRate;
-      audioElRef.current = audio;
       setVoiceEngine('gemini');
       setIsSpeaking(true);
 
@@ -203,6 +393,15 @@ export function useNarrator({
       audio.play().catch(() => {
         if (!cancelled) speakWithBrowser();
       });
+
+      // Quietly prefetch next scene audio so transitions are instant with the same warm voice
+      if (nextText && nextText.trim() && !audioCacheRef.current.has(nextText.trim())) {
+        window.setTimeout(() => {
+          if (!cancelled) {
+            fetchTtsDataUrl(nextText).catch(() => {});
+          }
+        }, 1200);
+      }
     };
 
     const runNarration = async () => {
@@ -214,44 +413,24 @@ export function useNarrator({
         return;
       }
 
-      const cachedDataUrl = audioCacheRef.current.get(sceneId);
+      const clean = text.trim();
+      const cachedDataUrl = audioCacheRef.current.get(clean);
       if (cachedDataUrl) {
         playWavDataUrl(cachedDataUrl);
         return;
       }
 
       setIsLoadingAudio(true);
-      try {
-        const res = await fetch('/api/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, sceneId }),
-        });
+      const dataUrl = await fetchTtsDataUrl(clean);
+      if (cancelled) return;
+      setIsLoadingAudio(false);
 
-        if (cancelled) return;
-        setIsLoadingAudio(false);
-
-        if (!res.ok) {
-          speakWithBrowser();
-          return;
-        }
-
-        const data = await res.json();
-        if (!data?.audioBase64) {
-          speakWithBrowser();
-          return;
-        }
-
-        const dataUrl = `data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`;
-        audioCacheRef.current.set(sceneId, dataUrl);
-
-        if (cancelled) return;
-        playWavDataUrl(dataUrl);
-      } catch {
-        if (cancelled) return;
-        setIsLoadingAudio(false);
+      if (!dataUrl) {
         speakWithBrowser();
+        return;
       }
+
+      playWavDataUrl(dataUrl);
     };
 
     runNarration();
@@ -260,13 +439,25 @@ export function useNarrator({
       cancelled = true;
       stopAll();
     };
-  }, [sceneId, text, isPlaying, muted, playbackRate, fallbackDurationMs, scheduleNext, stopAll]);
+  }, [
+    sceneId,
+    text,
+    nextText,
+    isPlaying,
+    muted,
+    playbackRate,
+    fallbackDurationMs,
+    scheduleNext,
+    stopAll,
+    getSharedAudio,
+    fetchTtsDataUrl,
+  ]);
 
   useEffect(() => {
-    if (audioElRef.current) {
-      audioElRef.current.playbackRate = playbackRate;
+    if (sharedAudioRef.current) {
+      sharedAudioRef.current.playbackRate = playbackRate;
     }
   }, [playbackRate]);
 
-  return { voiceEngine, isLoadingAudio, isSpeaking, progress, stopAll };
+  return { voiceEngine, isLoadingAudio, isSpeaking, progress, stopAll, unlockAudio };
 }

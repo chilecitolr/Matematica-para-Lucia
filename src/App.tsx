@@ -132,6 +132,7 @@ export default function App() {
   }, [videoChapters]);
 
   const currentItem = flatScenes[sceneIndex] || flatScenes[0];
+  const nextItem = flatScenes[sceneIndex + 1];
   const isPracticeScene = currentItem?.scene.phase === 'practica';
 
   const handleSelectVideo = (videoId: VideoModule['id']) => {
@@ -179,8 +180,9 @@ export default function App() {
     handleNextScene();
   }, [isPracticeScene, handleNextScene]);
 
-  const { isLoadingAudio, isSpeaking, voiceEngine, progress } = useNarrator({
+  const { isLoadingAudio, isSpeaking, voiceEngine, progress, unlockAudio } = useNarrator({
     text: currentItem?.scene.narration || '',
+    nextText: nextItem?.scene.narration || '',
     sceneId: `${currentItem?.scene.id || 'none'}-${replayNonce}`,
     isPlaying,
     muted,
@@ -294,7 +296,7 @@ export default function App() {
           <p className="font-display text-base sm:text-lg md:text-xl font-bold text-slate-900">
             Este material está adaptado para Lucía.
           </p>
-          <p className="font-display text-sm sm:text-base md:text-lg font-semibold text-blue-800">
+          <p className="font-display text-sm sm:text-base md:text-lg font-semibold bg-[#ed127f] text-[#f7f7f8]">
             Con amor, su papá!!
           </p>
         </div>
@@ -414,7 +416,10 @@ export default function App() {
                 <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsPlaying((p) => !p)}
+                    onClick={() => {
+                      if (!isPlaying) unlockAudio();
+                      setIsPlaying((p) => !p);
+                    }}
                     className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
                     {isPlaying ? (
@@ -452,7 +457,10 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={handleRepeatScene}
+                    onClick={() => {
+                      unlockAudio();
+                      handleRepeatScene();
+                    }}
                     className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer sm:order-3"
                   >
                     <RotateCcw className="w-4 h-4" />

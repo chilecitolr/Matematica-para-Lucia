@@ -3,7 +3,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { synthesizeNarrationWav } from './server/ttsService.ts';
+import { synthesizeNarrationLive } from './server/ttsService.ts';
 import {
   ensureVideoBuilt,
   getAllVideoStatuses,
@@ -39,7 +39,7 @@ app.post('/api/tts', async (req, res) => {
       return;
     }
 
-    const wavBuffer = await synthesizeNarrationWav(rawText);
+    const wavBuffer = await synthesizeNarrationLive(rawText);
     if (!wavBuffer) {
       res.status(503).json({
         error: 'Servicio de voz Gemini no disponible; usando voz del navegador.',
