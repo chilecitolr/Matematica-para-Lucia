@@ -1,0 +1,8 @@
+{
+  "name": "Matemática Paso a Paso — 3.er Año",
+  "description": "Serie de videos educativos animados y accesibles para aprender fracciones, potencias, raíces y monomios paso a paso.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
