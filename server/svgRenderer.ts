@@ -1,4 +1,5 @@
 import type { Chapter, LessonScene, PedagogicalPhase } from '../src/types/lesson.ts';
+import { splitNarrationCues, type SpotlightTarget } from '../src/utils/spotlightCues.ts';
 
 const PHASE_LABELS: Record<PedagogicalPhase, string> = {
   concepto: 'Comprendemos la idea',
@@ -74,10 +75,13 @@ function wrapText(text: string, maxChars: number): string[] {
 }
 
 /**
- * Renders a math expression inside SVG with the 4-color code:
- * Blue (#1D4ED8) numbers, Green (#15803D) variables, Orange (#C2410C) exponents, Red (#DC2626) minus.
+ * Renders a math expression inside SVG with the 4-color code and enlarges tokens matching spotlight.
  */
-function renderColorMathTspans(expr: string, baseFontSize: number): string {
+function renderColorMathTspans(
+  expr: string,
+  baseFontSize: number,
+  spotlight: SpotlightTarget = 'none'
+): string {
   const tokens: Array<{ value: string; kind: 'num' | 'var' | 'exp' | 'neg' | 'op' | 'word' }> = [];
   let i = 0;
 
@@ -126,43 +130,65 @@ function renderColorMathTspans(expr: string, baseFontSize: number): string {
   return tokens
     .map((t) => {
       if (t.kind === 'num') {
-        return `<tspan fill="#1D4ED8" font-family="JetBrains Mono, monospace" font-weight="700">${esc(t.value)}</tspan>`;
+        const hi = spotlight === 'num' || spotlight === 'base';
+        const fs = hi ? Math.round(baseFontSize * 1.28) : baseFontSize;
+        return `<tspan fill="#1D4ED8" font-family="JetBrains Mono, monospace" font-weight="700" font-size="${fs}">${esc(t.value)}</tspan>`;
       }
       if (t.kind === 'var') {
-        return `<tspan fill="#15803D" font-family="JetBrains Mono, monospace" font-weight="700" font-style="italic">${esc(t.value)}</tspan>`;
+        const hi = spotlight === 'var';
+        const fs = hi ? Math.round(baseFontSize * 1.32) : baseFontSize;
+        return `<tspan fill="#15803D" font-family="JetBrains Mono, monospace" font-weight="700" font-style="${hi ? 'normal' : 'italic'}" font-size="${fs}">${esc(t.value)}</tspan>`;
       }
       if (t.kind === 'exp') {
-        return `<tspan fill="#C2410C" font-family="JetBrains Mono, monospace" font-weight="700" font-size="${Math.round(baseFontSize * 0.65)}" dy="${-Math.round(baseFontSize * 0.35)}">${esc(t.value)}</tspan><tspan dy="${Math.round(baseFontSize * 0.35)}" font-size="${baseFontSize}">&#8203;</tspan>`;
+        const hi = spotlight === 'exp';
+        const fs = hi ? Math.round(baseFontSize * 0.92) : Math.round(baseFontSize * 0.65);
+        const dy = Math.round(baseFontSize * 0.35);
+        return `<tspan fill="#C2410C" font-family="JetBrains Mono, monospace" font-weight="700" font-size="${fs}" dy="${-dy}">${esc(t.value)}</tspan><tspan dy="${dy}" font-size="${baseFontSize}">&#8203;</tspan>`;
       }
       if (t.kind === 'neg') {
-        return `<tspan fill="#DC2626" font-family="JetBrains Mono, monospace" font-weight="700">${esc(t.value)}</tspan>`;
+        const hi = spotlight === 'neg';
+        const fs = hi ? Math.round(baseFontSize * 1.35) : baseFontSize;
+        return `<tspan fill="#DC2626" font-family="JetBrains Mono, monospace" font-weight="700" font-size="${fs}">${esc(t.value)}</tspan>`;
       }
       if (t.kind === 'word') {
         return `<tspan fill="#334155" font-family="Noto Sans, sans-serif" font-weight="600" font-size="${Math.round(baseFontSize * 0.85)}">${esc(t.value)}</tspan>`;
       }
-      return `<tspan fill="#475569" font-family="JetBrains Mono, monospace">${esc(t.value)}</tspan>`;
+      return `<tspan fill="#475569" font-family="JetBrains Mono, monospace" font-size="${baseFontSize}">${esc(t.value)}</tspan>`;
     })
     .join('');
 }
 
-function renderVerticalFractionSvg(cx: number, cy: number, num: string, den: string, scale = 1): string {
-  const fontSize = Math.round(38 * scale);
+function renderVerticalFractionSvg(
+  cx: number,
+  cy: number,
+  num: string,
+  den: string,
+  scale = 1,
+  spotlight: SpotlightTarget = 'none'
+): string {
+  const hiNum = spotlight === 'numerador' || spotlight === 'num';
+  const hiDen = spotlight === 'denominador' || spotlight === 'num';
+  const numFs = Math.round((hiNum ? 48 : 38) * scale);
+  const denFs = Math.round((hiDen ? 48 : 38) * scale);
   const w = Math.max(46, Math.max(num.length, den.length) * 24) * scale;
+
   return `
-    <text x="${cx}" y="${cy - 14 * scale}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${fontSize}" font-weight="700" fill="#1D4ED8">${esc(num)}</text>
+    ${hiNum ? `<rect x="${cx - w / 2 - 8}" y="${cy - 54 * scale}" width="${w + 16}" height="${48 * scale}" rx="10" fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>` : ''}
+    <text x="${cx}" y="${cy - 14 * scale}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${numFs}" font-weight="700" fill="#1D4ED8">${esc(num)}</text>
     <line x1="${cx - w / 2}" y1="${cy}" x2="${cx + w / 2}" y2="${cy}" stroke="#0F172A" stroke-width="${Math.max(3, 3.5 * scale)}" stroke-linecap="round"/>
-    <text x="${cx}" y="${cy + 38 * scale}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${fontSize}" font-weight="700" fill="#1D4ED8">${esc(den)}</text>
+    ${hiDen ? `<rect x="${cx - w / 2 - 8}" y="${cy + 6 * scale}" width="${w + 16}" height="${48 * scale}" rx="10" fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>` : ''}
+    <text x="${cx}" y="${cy + 38 * scale}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${denFs}" font-weight="700" fill="#1D4ED8">${esc(den)}</text>
   `;
 }
 
 export interface FramePlan {
   svg: string;
-  durationShare: number; // relative fraction 0..1 of the scene's audio duration
+  durationShare: number;
   extraPauseSeconds?: number;
 }
 
 /**
- * Generates 1 or more progressive 1280x720 SVG frames for a given scene.
+ * Generates progressive 1280x720 SVG frames synchronized with spoken spotlight cues.
  */
 export function buildSceneSvgFrames(
   chapter: Chapter,
@@ -172,10 +198,18 @@ export function buildSceneSvgFrames(
 
   if (d.type === 'steps-board' && d.lines.length > 1) {
     const count = d.lines.length;
+    const cues = splitNarrationCues(scene.narration);
     const frames: FramePlan[] = [];
     for (let step = 1; step <= count; step++) {
+      const midRatio = (step - 0.5) / count;
+      const cue = cues.find((c) => midRatio >= c.startRatio && midRatio <= c.endRatio);
       frames.push({
-        svg: renderSingleFrame(chapter, scene, { stepsReveal: step }),
+        svg: renderSingleFrame(chapter, scene, {
+          stepsReveal: step,
+          spotlight: cue?.target || 'none',
+          spotlightLabel: cue?.label || '',
+          activeSentence: cue?.text,
+        }),
         durationShare: 1 / count,
       });
     }
@@ -187,7 +221,7 @@ export function buildSceneSvgFrames(
       {
         svg: renderSingleFrame(chapter, scene, { practiceReveal: false }),
         durationShare: 0.65,
-        extraPauseSeconds: 10, // 10-second calm thinking pause baked into video!
+        extraPauseSeconds: 10,
       },
       {
         svg: renderSingleFrame(chapter, scene, { practiceReveal: true }),
@@ -196,27 +230,67 @@ export function buildSceneSvgFrames(
     ];
   }
 
-  return [
-    {
-      svg: renderSingleFrame(chapter, scene, {}),
-      durationShare: 1,
-    },
-  ];
+  // Merge consecutive spoken sentences that share the same spotlight target (cap to <= 5 frames per scene)
+  const cues = splitNarrationCues(scene.narration);
+  const merged: Array<{ target: SpotlightTarget; label: string; share: number; text: string }> = [];
+  for (const c of cues) {
+    const share = c.endRatio - c.startRatio;
+    const prev = merged[merged.length - 1];
+    if (prev && (prev.target === c.target || merged.length >= 5)) {
+      prev.share += share;
+      prev.text = c.text;
+      if (prev.target === 'none' && c.target !== 'none') {
+        prev.target = c.target;
+        prev.label = c.label;
+      }
+    } else {
+      merged.push({ target: c.target, label: c.label, share, text: c.text });
+    }
+  }
+
+  if (merged.length <= 1) {
+    const only = merged[0];
+    return [
+      {
+        svg: renderSingleFrame(chapter, scene, {
+          spotlight: only?.target || 'none',
+          spotlightLabel: only?.label || '',
+        }),
+        durationShare: 1,
+      },
+    ];
+  }
+
+  return merged.map((seg) => ({
+    svg: renderSingleFrame(chapter, scene, {
+      spotlight: seg.target,
+      spotlightLabel: seg.label,
+      activeSentence: seg.text,
+    }),
+    durationShare: seg.share,
+  }));
 }
 
 function renderSingleFrame(
   chapter: Chapter,
   scene: LessonScene,
-  opts: { stepsReveal?: number; practiceReveal?: boolean }
+  opts: {
+    stepsReveal?: number;
+    practiceReveal?: boolean;
+    spotlight?: SpotlightTarget;
+    spotlightLabel?: string;
+    activeSentence?: string;
+  }
 ): string {
-  const keyLines = wrapText(scene.keyMessage, 78).slice(0, 2);
-  const subLines = wrapText(scene.narration, 92).slice(0, 3);
+  const spotlight = opts.spotlight || 'none';
+  const keyLines = wrapText(scene.keyMessage, 74).slice(0, 2);
+  const subtitleSource = opts.activeSentence || scene.narration;
+  const subLines = wrapText(subtitleSource, 90).slice(0, 3);
 
-  const diagramContent = renderDiagramSvg(scene, opts);
+  const diagramContent = renderDiagramSvg(scene, { ...opts, spotlight });
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
-  <!-- Background -->
   <rect width="1280" height="720" fill="#F8FAFC"/>
   <rect x="36" y="24" width="1208" height="572" rx="18" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
 
@@ -236,6 +310,12 @@ function renderSingleFrame(
   <text x="68" y="124" font-family="Noto Sans, sans-serif" font-size="31" font-weight="700" fill="#0F172A">
     ${esc(scene.headline)}
   </text>
+  ${
+    opts.spotlightLabel
+      ? `<rect x="820" y="96" width="396" height="36" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.5"/>
+         <text x="1018" y="120" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="16" font-weight="700" fill="#0F172A">${esc(opts.spotlightLabel)}</text>`
+      : ''
+  }
   ${keyLines
     .map(
       (line, idx) =>
@@ -251,22 +331,18 @@ function renderSingleFrame(
   <!-- Mini 4-Color Legend Bar -->
   <g transform="translate(68, 560)">
     <rect x="0" y="0" width="14" height="14" rx="3" fill="#1D4ED8"/>
-    <text x="22" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="600" fill="#475569">Números</text>
+    <text x="22" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="${spotlight === 'num' ? '700' : '600'}" fill="${spotlight === 'num' ? '#1D4ED8' : '#475569'}">Números</text>
 
     <rect x="112" y="0" width="14" height="14" rx="3" fill="#15803D"/>
-    <text x="134" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="600" fill="#475569">Letras</text>
+    <text x="134" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="${spotlight === 'var' ? '700' : '600'}" fill="${spotlight === 'var' ? '#15803D' : '#475569'}">Letras</text>
 
     <rect x="208" y="0" width="14" height="14" rx="3" fill="#C2410C"/>
-    <text x="230" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="600" fill="#475569">Exponentes</text>
+    <text x="230" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="${spotlight === 'exp' ? '700' : '600'}" fill="${spotlight === 'exp' ? '#C2410C' : '#475569'}">Exponentes</text>
 
     <rect x="342" y="0" width="14" height="14" rx="3" fill="#DC2626"/>
-    <text x="364" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="600" fill="#475569">Signos (−)</text>
+    <text x="364" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="${spotlight === 'neg' ? '700' : '600'}" fill="${spotlight === 'neg' ? '#DC2626' : '#475569'}">Signos (−)</text>
 
-    ${
-      scene.supportPhrase
-        ? `<text x="1144" y="12" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="15" font-weight="600" fill="#64748B">${esc(scene.supportPhrase)}</text>`
-        : ''
-    }
+    <text x="1144" y="12" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="14" font-weight="600" fill="#64748B">Adaptado para Lucía · Con amor, su papá!!</text>
   </g>
 
   <!-- Subtitle Strip -->
@@ -282,9 +358,10 @@ function renderSingleFrame(
 
 function renderDiagramSvg(
   scene: LessonScene,
-  opts: { stepsReveal?: number; practiceReveal?: boolean }
+  opts: { stepsReveal?: number; practiceReveal?: boolean; spotlight: SpotlightTarget }
 ): string {
   const d = scene.diagram;
+  const sp = opts.spotlight;
 
   switch (d.type) {
     case 'fraction-intro': {
@@ -292,6 +369,9 @@ function renderDiagramSvg(
       const cy = 365;
       const r = 115;
       const angle = 360 / d.total;
+      const hiNum = sp === 'numerador';
+      const hiDen = sp === 'denominador';
+
       const slicesSvg = Array.from({ length: d.total })
         .map((_, idx) => {
           const a1 = ((idx * angle - 90) * Math.PI) / 180;
@@ -301,17 +381,19 @@ function renderDiagramSvg(
           const x2 = cx + r * Math.cos(a2);
           const y2 = cy + r * Math.sin(a2);
           const large = angle > 180 ? 1 : 0;
-          const fill = idx < d.slices ? '#DBEAFE' : '#F8FAFC';
-          return `<path d="M ${cx} ${cy} L ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z" fill="${fill}" stroke="#1E293B" stroke-width="3"/>`;
+          const fill = idx < d.slices ? (hiNum ? '#93C5FD' : '#DBEAFE') : (hiDen ? '#E2E8F0' : '#F8FAFC');
+          return `<path d="M ${cx} ${cy} L ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z" fill="${fill}" stroke="${hiDen ? '#1D4ED8' : '#1E293B'}" stroke-width="${hiDen ? '4' : '3'}"/>`;
         })
         .join('\n');
 
       return `
         ${slicesSvg}
         <text x="${cx}" y="512" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="18" fill="#475569">${esc(d.caption)}</text>
-        ${renderVerticalFractionSvg(620, 360, String(d.slices), String(d.total), 1.4)}
-        <text x="700" y="332" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#1D4ED8">→ Numerador (${d.slices}): partes que tomamos</text>
-        <text x="700" y="408" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#1D4ED8">→ Denominador (${d.total}): partes iguales del entero</text>
+        ${renderVerticalFractionSvg(620, 360, String(d.slices), String(d.total), 1.4, sp)}
+        <rect x="692" y="302" width="510" height="44" rx="10" fill="${hiNum ? '#EFF6FF' : 'none'}" stroke="${hiNum ? '#3B82F6' : 'none'}" stroke-width="2"/>
+        <text x="704" y="332" font-family="Noto Sans, sans-serif" font-size="${hiNum ? 24 : 21}" font-weight="700" fill="#1D4ED8">→ Numerador (${d.slices}): partes que tomamos</text>
+        <rect x="692" y="378" width="510" height="44" rx="10" fill="${hiDen ? '#EFF6FF' : 'none'}" stroke="${hiDen ? '#3B82F6' : 'none'}" stroke-width="2"/>
+        <text x="704" y="408" font-family="Noto Sans, sans-serif" font-size="${hiDen ? 24 : 21}" font-weight="700" fill="#1D4ED8">→ Denominador (${d.total}): partes iguales del entero</text>
       `;
     }
 
@@ -340,12 +422,12 @@ function renderDiagramSvg(
         .join('');
 
       return `
-        ${renderVerticalFractionSvg(440, 260, String(d.leftNum), String(d.den), 1.15)}
+        ${renderVerticalFractionSvg(440, 260, String(d.leftNum), String(d.den), 1.15, sp)}
         <text x="530" y="275" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="42" font-weight="700" fill="#334155">${d.op}</text>
-        ${renderVerticalFractionSvg(620, 260, String(d.rightNum), String(d.den), 1.15)}
+        ${renderVerticalFractionSvg(620, 260, String(d.rightNum), String(d.den), 1.15, sp)}
         <text x="710" y="275" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="42" font-weight="700" fill="#334155">=</text>
         <rect x="765" y="198" width="110" height="122" rx="14" fill="#EFF6FF" stroke="#93C5FD" stroke-width="2"/>
-        ${renderVerticalFractionSvg(820, 260, String(resultNum), String(d.den), 1.15)}
+        ${renderVerticalFractionSvg(820, 260, String(resultNum), String(d.den), 1.15, sp)}
 
         ${drawBar(360, d.leftNum, `${d.leftNum}/${d.den}`, '#2563EB')}
         ${drawBar(412, d.rightNum, `${d.rightNum}/${d.den}`, '#38BDF8')}
@@ -364,18 +446,18 @@ function renderDiagramSvg(
       const sum = d.op === '+' ? eqL + eqR : eqL - eqR;
 
       return `
-        ${renderVerticalFractionSvg(250, 320, String(ln), String(ld), 1.25)}
+        ${renderVerticalFractionSvg(250, 320, String(ln), String(ld), 1.25, sp)}
         <text x="340" y="335" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="44" font-weight="700" fill="#334155">${d.op}</text>
-        ${renderVerticalFractionSvg(430, 320, String(rn), String(rd), 1.25)}
+        ${renderVerticalFractionSvg(430, 320, String(rn), String(rd), 1.25, sp)}
 
         ${
           d.stage !== 'original'
             ? `
           <text x="530" y="335" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="40" fill="#64748B">→</text>
           <rect x="580" y="250" width="320" height="140" rx="16" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
-          ${renderVerticalFractionSvg(655, 320, String(eqL), String(d.commonDen), 1.2)}
+          ${renderVerticalFractionSvg(655, 320, String(eqL), String(d.commonDen), 1.2, sp)}
           <text x="740" y="335" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="40" font-weight="700" fill="#334155">${d.op}</text>
-          ${renderVerticalFractionSvg(825, 320, String(eqR), String(d.commonDen), 1.2)}
+          ${renderVerticalFractionSvg(825, 320, String(eqR), String(d.commonDen), 1.2, sp)}
           <text x="250" y="420" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="18" font-weight="600" fill="#475569">× ${multL} arriba y abajo</text>
           <text x="430" y="420" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="18" font-weight="600" fill="#475569">× ${multR} arriba y abajo</text>
         `
@@ -387,7 +469,7 @@ function renderDiagramSvg(
             ? `
           <text x="955" y="335" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="44" font-weight="700" fill="#334155">=</text>
           <rect x="1005" y="250" width="130" height="140" rx="16" fill="#EFF6FF" stroke="#93C5FD" stroke-width="2.5"/>
-          ${renderVerticalFractionSvg(1070, 320, String(sum), String(d.commonDen), 1.25)}
+          ${renderVerticalFractionSvg(1070, 320, String(sum), String(d.commonDen), 1.25, sp)}
         `
             : ''
         }
@@ -406,27 +488,28 @@ function renderDiagramSvg(
     }
 
     case 'fraction-flip': {
+      const hiFlip = sp === 'flip';
       return `
-        <text x="260" y="340" text-anchor="middle" font-size="44">${renderColorMathTspans(d.first, 44)}</text>
+        <text x="260" y="340" text-anchor="middle" font-size="44">${renderColorMathTspans(d.first, 44, sp)}</text>
         <text x="360" y="340" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="44" font-weight="700" fill="#64748B">÷</text>
-        ${renderVerticalFractionSvg(465, 325, d.secondNum, d.secondDen, 1.2)}
+        ${renderVerticalFractionSvg(465, 325, d.secondNum, d.secondDen, 1.2, sp)}
 
         <text x="580" y="340" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="44" font-weight="700" fill="#1D4ED8">→</text>
 
-        <rect x="640" y="232" width="440" height="186" rx="18" fill="#EFF6FF" stroke="#93C5FD" stroke-width="2.5"/>
-        <text x="745" y="340" text-anchor="middle" font-size="44">${renderColorMathTspans(d.first, 44)}</text>
+        <rect x="640" y="226" width="450" height="196" rx="18" fill="${hiFlip ? '#DBEAFE' : '#EFF6FF'}" stroke="${hiFlip ? '#2563EB' : '#93C5FD'}" stroke-width="${hiFlip ? '4' : '2.5'}"/>
+        <text x="745" y="340" text-anchor="middle" font-size="44">${renderColorMathTspans(d.first, 44, sp)}</text>
         <text x="855" y="340" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="44" font-weight="700" fill="#1D4ED8">×</text>
-        ${renderVerticalFractionSvg(975, 320, d.secondDen, d.secondNum, 1.2)}
-        <text x="975" y="400" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="16" font-weight="700" fill="#1D4ED8">Se dio vuelta</text>
+        ${renderVerticalFractionSvg(975, 320, d.secondDen, d.secondNum, hiFlip ? 1.38 : 1.2, sp)}
+        <text x="975" y="405" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#1D4ED8">Se dio vuelta</text>
 
         ${
           d.signNote
-            ? `<text x="420" y="486" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="22" font-weight="600" fill="#334155">Signos: ${esc(d.signNote)}</text>`
+            ? `<text x="420" y="486" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="${sp === 'neg' ? '#DC2626' : '#334155'}">Signos: ${esc(d.signNote)}</text>`
             : ''
         }
         ${
           d.result
-            ? `<text x="820" y="486" text-anchor="middle" font-size="28">Resultado: ${renderColorMathTspans(d.result, 28)}</text>`
+            ? `<text x="820" y="486" text-anchor="middle" font-size="28">Resultado: ${renderColorMathTspans(d.result, 28, sp)}</text>`
             : ''
         }
       `;
@@ -435,6 +518,9 @@ function renderDiagramSvg(
     case 'power-visual': {
       const baseNum = Number(d.base);
       const count = !Number.isNaN(baseNum) && baseNum <= 5 ? baseNum : 3;
+      const hiBase = sp === 'base' || sp === 'num';
+      const hiExp = sp === 'exp';
+
       const gridCells: string[] = [];
       const startX = 780;
       const startY = 235;
@@ -447,14 +533,17 @@ function renderDiagramSvg(
       }
 
       return `
-        <text x="275" y="325" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="96" font-weight="700" fill="#1D4ED8">${esc(d.base)}</text>
-        <text x="335" y="265" font-family="JetBrains Mono, monospace" font-size="50" font-weight="700" fill="#C2410C">${d.exp}</text>
+        ${hiBase ? `<rect x="215" y="230" width="110" height="110" rx="16" fill="#DBEAFE" stroke="#3B82F6" stroke-width="3"/>` : ''}
+        <text x="275" y="325" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${hiBase ? 114 : 96}" font-weight="700" fill="#1D4ED8">${esc(d.base)}</text>
 
-        <text x="300" y="388" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#1D4ED8">Base (${esc(d.base)}): se repite</text>
-        <text x="300" y="422" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#C2410C">Exponente (${d.exp}): cuántas veces se multiplica</text>
+        ${hiExp ? `<rect x="315" y="210" width="70" height="72" rx="12" fill="#FFEDD5" stroke="#EA580C" stroke-width="3"/>` : ''}
+        <text x="345" y="265" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${hiExp ? 64 : 50}" font-weight="700" fill="#C2410C">${d.exp}</text>
+
+        <text x="300" y="388" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="${hiBase ? 24 : 21}" font-weight="700" fill="#1D4ED8">Base (${esc(d.base)}): se repite</text>
+        <text x="300" y="422" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="${hiExp ? 24 : 21}" font-weight="700" fill="#C2410C">Exponente (${d.exp}): cuántas veces se multiplica</text>
 
         <rect x="520" y="212" width="590" height="218" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
-        <text x="645" y="330" text-anchor="middle" font-size="36">${renderColorMathTspans(`${d.expanded} = ${d.result}`, 36)}</text>
+        <text x="645" y="330" text-anchor="middle" font-size="36">${renderColorMathTspans(`${d.expanded} = ${d.result}`, 36, sp)}</text>
         ${gridCells.join('')}
 
         ${
@@ -482,10 +571,10 @@ function renderDiagramSvg(
         }
         return `
           <text x="360" y="335" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="68" font-weight="700" fill="#0F172A">
-            √<tspan fill="#1D4ED8">${d.radicandNum}</tspan> = <tspan fill="#1D4ED8">${d.rootNum}</tspan>
+            √<tspan fill="#1D4ED8">${d.radicandNum}</tspan> = <tspan fill="#1D4ED8" font-size="${sp === 'num' ? 84 : 68}">${d.rootNum}</tspan>
           </text>
           <text x="360" y="395" text-anchor="middle" font-size="26">
-            <tspan font-family="Noto Sans, sans-serif" fill="#334155">Porque </tspan>${renderColorMathTspans(`${d.rootNum} × ${d.rootNum} = ${d.radicandNum}`, 26)}
+            <tspan font-family="Noto Sans, sans-serif" fill="#334155">Porque </tspan>${renderColorMathTspans(`${d.rootNum} × ${d.rootNum} = ${d.radicandNum}`, 26, sp)}
           </text>
           <rect x="696" y="210" width="${n * 42 + 42}" height="${n * 42 + 42}" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
           ${cells.join('')}
@@ -495,10 +584,10 @@ function renderDiagramSvg(
 
       return `
         <text x="360" y="335" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="68" font-weight="700" fill="#0F172A">
-          <tspan fill="#C2410C" font-size="36" dy="-24">3</tspan><tspan dy="24">√</tspan><tspan fill="#1D4ED8">${d.radicandNum}</tspan> = <tspan fill="#1D4ED8">${d.rootNum}</tspan>
+          <tspan fill="#C2410C" font-size="${sp === 'exp' ? 46 : 36}" dy="-24">3</tspan><tspan dy="24">√</tspan><tspan fill="#1D4ED8">${d.radicandNum}</tspan> = <tspan fill="#1D4ED8" font-size="${sp === 'num' ? 84 : 68}">${d.rootNum}</tspan>
         </text>
         <text x="360" y="398" text-anchor="middle" font-size="25">
-          <tspan font-family="Noto Sans, sans-serif" fill="#334155">Porque </tspan>${renderColorMathTspans(`${d.rootNum} × ${d.rootNum} × ${d.rootNum} = ${d.radicandNum}`, 25)}
+          <tspan font-family="Noto Sans, sans-serif" fill="#334155">Porque </tspan>${renderColorMathTspans(`${d.rootNum} × ${d.rootNum} × ${d.rootNum} = ${d.radicandNum}`, 25, sp)}
         </text>
         <g transform="translate(730, 200) scale(1.25)">
           <polygon points="110,20 185,60 110,100 35,60" fill="#DBEAFE" stroke="#1E293B" stroke-width="2"/>
@@ -534,7 +623,7 @@ function renderDiagramSvg(
           const active = idx + 1 === d.activeStep;
           const y = 215 + idx * 58;
           return `
-            <rect x="88" y="${y}" width="520" height="46" rx="10" fill="${active ? '#EFF6FF' : '#F8FAFC'}" stroke="${active ? '#93C5FD' : '#E2E8F0'}" stroke-width="2"/>
+            <rect x="88" y="${y}" width="520" height="46" rx="10" fill="${active ? '#EFF6FF' : '#F8FAFC'}" stroke="${active ? '#3B82F6' : '#E2E8F0'}" stroke-width="${active ? '3' : '2'}"/>
             <text x="112" y="${y + 30}" font-family="Noto Sans, sans-serif" font-size="19" font-weight="${active ? '700' : '500'}" fill="${active ? '#1E3A8A' : '#475569'}">${esc(st)}</text>
           `;
         })
@@ -545,7 +634,7 @@ function renderDiagramSvg(
       return `
         ${listSvg}
         <rect x="645" y="235" width="540" height="225" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
-        <text x="915" y="325" text-anchor="middle" font-size="28">${renderColorMathTspans(d.expression, 28)}</text>
+        <text x="915" y="325" text-anchor="middle" font-size="28">${renderColorMathTspans(d.expression, 28, sp)}</text>
         ${noteLines
           .map(
             (l, i) =>
@@ -558,21 +647,26 @@ function renderDiagramSvg(
     case 'monomio-parts': {
       const expr = `${d.sign || ''}${d.coeff}${d.vars.map((v) => v.letter + (v.exp && v.exp !== '1' ? toSup(Number(v.exp)) : '')).join('')}`;
       const litText = d.vars.map((v) => `${v.letter}${v.exp && v.exp !== '1' ? `^${v.exp}` : ''}`).join('');
+      const hiNum = sp === 'num';
+      const hiVar = sp === 'var';
+      const hiExp = sp === 'exp';
+      const hiNeg = sp === 'neg';
+
       return `
-        <rect x="390" y="210" width="500" height="120" rx="18" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
-        <text x="640" y="292" text-anchor="middle" font-size="76">${renderColorMathTspans(expr, 76)}</text>
+        <rect x="340" y="204" width="600" height="132" rx="18" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+        <text x="640" y="294" text-anchor="middle" font-size="78">${renderColorMathTspans(expr, 78, sp)}</text>
 
-        <rect x="210" y="365" width="260" height="100" rx="14" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="2"/>
+        <rect x="210" y="365" width="260" height="100" rx="14" fill="${hiNum || hiNeg ? '#DBEAFE' : '#EFF6FF'}" stroke="${hiNum || hiNeg ? '#2563EB' : '#BFDBFE'}" stroke-width="${hiNum || hiNeg ? '3.5' : '2'}"/>
         <text x="340" y="404" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#1E3A8A">Coeficiente</text>
-        <text x="340" y="444" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="30" font-weight="700" fill="#1D4ED8">${esc((d.sign || '') + d.coeff)}</text>
+        <text x="340" y="444" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${hiNum ? 36 : 30}" font-weight="700" fill="#1D4ED8">${esc((d.sign || '') + d.coeff)}</text>
 
-        <rect x="510" y="365" width="260" height="100" rx="14" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="2"/>
+        <rect x="510" y="365" width="260" height="100" rx="14" fill="${hiVar ? '#D1FAE5' : '#ECFDF5'}" stroke="${hiVar ? '#15803D' : '#A7F3D0'}" stroke-width="${hiVar ? '3.5' : '2'}"/>
         <text x="640" y="404" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#065F46">Parte literal</text>
-        <text x="640" y="444" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="30" font-weight="700" fill="#15803D">${esc(litText)}</text>
+        <text x="640" y="444" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${hiVar ? 36 : 30}" font-weight="700" fill="#15803D">${esc(litText)}</text>
 
-        <rect x="810" y="365" width="260" height="100" rx="14" fill="#FFF7ED" stroke="#FED7AA" stroke-width="2"/>
+        <rect x="810" y="365" width="260" height="100" rx="14" fill="${hiExp ? '#FFEDD5' : '#FFF7ED'}" stroke="${hiExp ? '#EA580C' : '#FED7AA'}" stroke-width="${hiExp ? '3.5' : '2'}"/>
         <text x="940" y="404" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#9A3412">Grado absoluto</text>
-        <text x="940" y="444" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="30" font-weight="700" fill="#C2410C">${d.degree}</text>
+        <text x="940" y="444" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${hiExp ? 36 : 30}" font-weight="700" fill="#C2410C">${d.degree}</text>
 
         ${
           d.note
@@ -596,10 +690,10 @@ function renderDiagramSvg(
           const y = 264 + idx * 44;
           return `
             <rect x="140" y="${y}" width="1000" height="44" fill="${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'}" stroke="#E2E8F0" stroke-width="1"/>
-            <text x="180" y="${y + 30}" font-size="22">${renderColorMathTspans(r.monomio, 22)}</text>
-            <text x="440" y="${y + 30}" font-family="JetBrains Mono, monospace" font-size="22" font-weight="700" fill="#1D4ED8">${esc(r.coef)}</text>
-            <text x="670" y="${y + 30}" font-family="JetBrains Mono, monospace" font-size="22" font-weight="700" fill="#15803D">${esc(r.literal)}</text>
-            <text x="920" y="${y + 30}" font-family="JetBrains Mono, monospace" font-size="22" font-weight="700" fill="#C2410C">${esc(r.grado)}</text>
+            <text x="180" y="${y + 30}" font-size="22">${renderColorMathTspans(r.monomio, 22, sp)}</text>
+            <text x="440" y="${y + 30}" font-family="JetBrains Mono, monospace" font-size="${sp === 'num' ? 26 : 22}" font-weight="700" fill="#1D4ED8">${esc(r.coef)}</text>
+            <text x="670" y="${y + 30}" font-family="JetBrains Mono, monospace" font-size="${sp === 'var' ? 26 : 22}" font-weight="700" fill="#15803D">${esc(r.literal)}</text>
+            <text x="920" y="${y + 30}" font-family="JetBrains Mono, monospace" font-size="${sp === 'exp' ? 26 : 22}" font-weight="700" fill="#C2410C">${esc(r.grado)}</text>
           `;
         })
         .join('');
@@ -619,19 +713,19 @@ function renderDiagramSvg(
         <rect x="160" y="250" width="210" height="160" rx="16" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="2"/>
         <rect x="235" y="274" width="60" height="50" rx="10" fill="#15803D"/>
         <text x="265" y="306" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="20" font-weight="700" fill="#FFFFFF">x²</text>
-        <text x="265" y="378" text-anchor="middle" font-size="40">${renderColorMathTspans(d.leftLabel, 40)}</text>
+        <text x="265" y="378" text-anchor="middle" font-size="40">${renderColorMathTspans(d.leftLabel, 40, sp)}</text>
 
         <text x="415" y="345" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="44" font-weight="700" fill="#334155">+</text>
 
         <rect x="460" y="250" width="210" height="160" rx="16" fill="${d.sameFamily ? '#ECFDF5' : '#FFF7ED'}" stroke="${d.sameFamily ? '#A7F3D0' : '#FED7AA'}" stroke-width="2"/>
         <rect x="535" y="274" width="60" height="50" rx="${d.sameFamily ? '10' : '25'}" fill="${d.sameFamily ? '#15803D' : '#EA580C'}"/>
         <text x="565" y="306" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="20" font-weight="700" fill="#FFFFFF">${d.sameFamily ? 'x²' : 'x³'}</text>
-        <text x="565" y="378" text-anchor="middle" font-size="40">${renderColorMathTspans(d.rightLabel, 40)}</text>
+        <text x="565" y="378" text-anchor="middle" font-size="40">${renderColorMathTspans(d.rightLabel, 40, sp)}</text>
 
         <text x="720" y="345" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="40" fill="#64748B">→</text>
 
         <rect x="770" y="268" width="350" height="124" rx="16" fill="${d.sameFamily ? '#EFF6FF' : '#FEF2F2'}" stroke="${d.sameFamily ? '#93C5FD' : '#FECACA'}" stroke-width="2"/>
-        <text x="945" y="345" text-anchor="middle" font-size="34">${renderColorMathTspans(d.resultLabel, 34)}</text>
+        <text x="945" y="345" text-anchor="middle" font-size="34">${renderColorMathTspans(d.resultLabel, 34, sp)}</text>
 
         <text x="640" y="476" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="22" font-weight="600" fill="#334155">
           ${
@@ -649,17 +743,19 @@ function renderDiagramSvg(
       const opSymbol = isMul ? '×' : '÷';
       const expOpSymbol = isMul ? '+' : '−';
       const eq = `${d.coeffA}${d.baseVar}${toSup(d.expA)} ${opSymbol} ${d.coeffB}${d.baseVar}${toSup(d.expB)} = ${d.coeffResult}${d.baseVar}${toSup(resultExp)}`;
+      const hiNum = sp === 'num';
+      const hiExp = sp === 'exp';
 
       return `
-        <text x="640" y="265" text-anchor="middle" font-size="46">${renderColorMathTspans(eq, 46)}</text>
+        <text x="640" y="265" text-anchor="middle" font-size="46">${renderColorMathTspans(eq, 46, sp)}</text>
 
-        <rect x="160" y="315" width="450" height="115" rx="14" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="2"/>
+        <rect x="160" y="315" width="450" height="115" rx="14" fill="${hiNum ? '#DBEAFE' : '#EFF6FF'}" stroke="${hiNum ? '#2563EB' : '#BFDBFE'}" stroke-width="${hiNum ? '3.5' : '2'}"/>
         <text x="190" y="355" font-family="Noto Sans, sans-serif" font-size="20" font-weight="700" fill="#1E3A8A">Paso 1 · Números (coeficientes)</text>
-        <text x="190" y="400" font-family="JetBrains Mono, monospace" font-size="30" font-weight="700" fill="#1D4ED8">${esc(d.coeffA)} ${opSymbol} ${esc(d.coeffB)} = ${esc(d.coeffResult)}</text>
+        <text x="190" y="400" font-family="JetBrains Mono, monospace" font-size="${hiNum ? 34 : 30}" font-weight="700" fill="#1D4ED8">${esc(d.coeffA)} ${opSymbol} ${esc(d.coeffB)} = ${esc(d.coeffResult)}</text>
 
-        <rect x="670" y="315" width="450" height="115" rx="14" fill="#FFF7ED" stroke="#FED7AA" stroke-width="2"/>
+        <rect x="670" y="315" width="450" height="115" rx="14" fill="${hiExp ? '#FFEDD5' : '#FFF7ED'}" stroke="${hiExp ? '#EA580C' : '#FED7AA'}" stroke-width="${hiExp ? '3.5' : '2'}"/>
         <text x="700" y="355" font-family="Noto Sans, sans-serif" font-size="20" font-weight="700" fill="#9A3412">Paso 2 · Exponentes de ${esc(d.baseVar)}</text>
-        <text x="700" y="400" font-family="JetBrains Mono, monospace" font-size="30" font-weight="700" fill="#C2410C">${d.expA} ${expOpSymbol} ${d.expB} = ${resultExp}</text>
+        <text x="700" y="400" font-family="JetBrains Mono, monospace" font-size="${hiExp ? 34 : 30}" font-weight="700" fill="#C2410C">${d.expA} ${expOpSymbol} ${d.expB} = ${resultExp}</text>
 
         <text x="640" y="492" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="21" font-weight="600" fill="#475569">
           ${
@@ -672,18 +768,19 @@ function renderDiagramSvg(
     }
 
     case 'rectangle-area': {
+      const hiArea = sp === 'area';
       return `
-        <text x="360" y="242" text-anchor="middle" font-size="28">${renderColorMathTspans(`Lado = ${d.widthLabel}`, 28)}</text>
-        <text x="160" y="365" text-anchor="end" font-size="28">${renderColorMathTspans(d.heightLabel, 28)}</text>
-        <rect x="180" y="265" width="360" height="185" rx="16" fill="#EFF6FF" stroke="#2563EB" stroke-width="3.5"/>
+        <text x="360" y="242" text-anchor="middle" font-size="28">${renderColorMathTspans(`Lado = ${d.widthLabel}`, 28, sp)}</text>
+        <text x="160" y="365" text-anchor="end" font-size="28">${renderColorMathTspans(d.heightLabel, 28, sp)}</text>
+        <rect x="180" y="265" width="360" height="185" rx="16" fill="${hiArea ? '#DBEAFE' : '#EFF6FF'}" stroke="#2563EB" stroke-width="${hiArea ? '5' : '3.5'}"/>
         <text x="360" y="340" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="22" font-weight="600" fill="#475569">Área del rectángulo</text>
-        <text x="360" y="395" text-anchor="middle" font-size="44">${renderColorMathTspans(d.areaLabel, 44)}</text>
+        <text x="360" y="395" text-anchor="middle" font-size="${hiArea ? 50 : 44}">${renderColorMathTspans(d.areaLabel, hiArea ? 50 : 44, sp)}</text>
 
-        <rect x="640" y="245" width="510" height="225" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+        <rect x="640" y="245" width="510" height="225" rx="16" fill="#F8FAFC" stroke="${hiArea ? '#3B82F6' : '#E2E8F0'}" stroke-width="${hiArea ? '3' : '2'}"/>
         <text x="675" y="295" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#334155">Regla: Área = lado × lado</text>
-        <text x="675" y="345" font-size="28">${renderColorMathTspans(`Área = ${d.widthLabel} × ${d.heightLabel}`, 28)}</text>
+        <text x="675" y="345" font-size="28">${renderColorMathTspans(`Área = ${d.widthLabel} × ${d.heightLabel}`, 28, sp)}</text>
         <text x="675" y="390" font-family="Noto Sans, sans-serif" font-size="20" fill="#475569">3 × 2 = 6   ·   x² × x¹ = x³</text>
-        <text x="675" y="442" font-size="34">${renderColorMathTspans(`Área = ${d.areaLabel}`, 34)}</text>
+        <text x="675" y="442" font-size="34">${renderColorMathTspans(`Área = ${d.areaLabel}`, 34, sp)}</text>
       `;
     }
 
@@ -695,14 +792,15 @@ function renderDiagramSvg(
       const rowsSvg = visibleLines
         .map((line, idx) => {
           const y = 232 + idx * (rowH + 8);
+          const isNewest = idx === visibleLines.length - 1;
           return `
-            <rect x="88" y="${y}" width="1104" height="${rowH}" rx="12" fill="${line.focus ? '#EFF6FF' : '#F8FAFC'}" stroke="${line.focus ? '#93C5FD' : '#E2E8F0'}" stroke-width="1.5"/>
+            <rect x="88" y="${y}" width="1104" height="${rowH}" rx="12" fill="${line.focus || isNewest ? '#EFF6FF' : '#F8FAFC'}" stroke="${line.focus || isNewest ? '#3B82F6' : '#E2E8F0'}" stroke-width="${isNewest ? '2.5' : '1.5'}"/>
             ${
               line.label
                 ? `<text x="114" y="${y + Math.round(rowH * 0.65)}" font-family="Noto Sans, sans-serif" font-size="20" font-weight="700" fill="#334155">${esc(line.label)}</text>`
                 : ''
             }
-            <text x="${line.label ? 200 : 114}" y="${y + Math.round(rowH * 0.65)}" font-size="23">${renderColorMathTspans(line.math, 23)}</text>
+            <text x="${line.label ? 200 : 114}" y="${y + Math.round(rowH * 0.65)}" font-size="23">${renderColorMathTspans(line.math, 23, isNewest ? sp : 'none')}</text>
             ${
               line.note
                 ? `<text x="1168" y="${y + Math.round(rowH * 0.65)}" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="16" fill="#475569">${esc(line.note)}</text>`
@@ -724,7 +822,7 @@ function renderDiagramSvg(
         return `
           <rect x="140" y="218" width="1000" height="125" rx="16" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
           <text x="180" y="255" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#1D4ED8">PAUSA PARA PENSAR (10 SEGUNDOS)</text>
-          <text x="640" y="312" text-anchor="middle" font-size="44">${renderColorMathTspans(d.promptMath, 44)}</text>
+          <text x="640" y="312" text-anchor="middle" font-size="44">${renderColorMathTspans(d.promptMath, 44, sp)}</text>
 
           <text x="640" y="405" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="24" font-weight="600" fill="#0F172A">${esc(d.question)}</text>
           <rect x="240" y="445" width="800" height="58" rx="12" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>

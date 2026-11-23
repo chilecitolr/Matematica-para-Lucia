@@ -22,12 +22,12 @@ export function playSoftFeedbackTone(kind: 'gentle' | 'success') {
     const now = ctx.currentTime;
 
     if (kind === 'success') {
-      osc.frequency.setValueAtTime(523.25, now); // C5
-      osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.14); // E5
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.14);
       gain.gain.setValueAtTime(0.05, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
     } else {
-      osc.frequency.setValueAtTime(392.0, now); // G4
+      osc.frequency.setValueAtTime(392.0, now);
       gain.gain.setValueAtTime(0.035, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
     }
@@ -57,10 +57,12 @@ export function useNarrator({
   const [voiceEngine, setVoiceEngine] = useState<'gemini' | 'browser' | 'silent'>('gemini');
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const audioCacheRef = useRef<Map<string, string>>(new Map());
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<number | null>(null);
+  const progressIntervalRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onSceneComplete);
   onCompleteRef.current = onSceneComplete;
 
@@ -69,10 +71,15 @@ export function useNarrator({
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    if (progressIntervalRef.current !== null) {
+      window.clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
     if (audioElRef.current) {
       audioElRef.current.pause();
       audioElRef.current.onended = null;
       audioElRef.current.onerror = null;
+      audioElRef.current.ontimeupdate = null;
       audioElRef.current = null;
     }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -94,18 +101,39 @@ export function useNarrator({
     [autoAdvance]
   );
 
+  // Reset progress when scene changes
+  useEffect(() => {
+    setProgress(0);
+  }, [sceneId]);
+
   useEffect(() => {
     stopAll();
     if (!isPlaying) return;
 
     let cancelled = false;
 
+    const startTimerProgress = (totalMs: number) => {
+      const startedAt = Date.now();
+      if (progressIntervalRef.current !== null) {
+        window.clearInterval(progressIntervalRef.current);
+      }
+      progressIntervalRef.current = window.setInterval(() => {
+        if (cancelled) return;
+        const elapsed = Date.now() - startedAt;
+        const ratio = Math.min(1, elapsed / Math.max(1000, totalMs));
+        setProgress(ratio);
+      }, 150);
+    };
+
     const speakWithBrowser = () => {
       if (cancelled) return;
+      const estimatedMs = Math.round(fallbackDurationMs / playbackRate);
+
       if (muted || typeof window === 'undefined' || !('speechSynthesis' in window)) {
         setVoiceEngine('silent');
         setIsSpeaking(false);
-        scheduleNext(Math.round(fallbackDurationMs / playbackRate));
+        startTimerProgress(estimatedMs);
+        scheduleNext(estimatedMs);
         return;
       }
 
@@ -124,47 +152,71 @@ export function useNarrator({
       utterance.pitch = 1.0;
 
       utterance.onstart = () => {
-        if (!cancelled) setIsSpeaking(true);
+        if (!cancelled) {
+          setIsSpeaking(true);
+          startTimerProgress(estimatedMs);
+        }
+      };
+      utterance.onboundary = (ev) => {
+        if (!cancelled && text.length > 0 && typeof ev.charIndex === 'number') {
+          setProgress(Math.min(1, ev.charIndex / text.length));
+        }
       };
       utterance.onend = () => {
         if (cancelled) return;
+        setProgress(1);
         setIsSpeaking(false);
         scheduleNext(1800);
       };
       utterance.onerror = () => {
         if (cancelled) return;
         setIsSpeaking(false);
-        scheduleNext(Math.round(fallbackDurationMs / playbackRate));
+        startTimerProgress(estimatedMs);
+        scheduleNext(estimatedMs);
       };
 
       window.speechSynthesis.speak(utterance);
     };
 
+    const playWavDataUrl = (dataUrl: string) => {
+      const audio = new Audio(dataUrl);
+      audio.playbackRate = playbackRate;
+      audioElRef.current = audio;
+      setVoiceEngine('gemini');
+      setIsSpeaking(true);
+
+      audio.ontimeupdate = () => {
+        if (cancelled) return;
+        if (audio.duration && Number.isFinite(audio.duration) && audio.duration > 0) {
+          setProgress(Math.min(1, audio.currentTime / audio.duration));
+        }
+      };
+      audio.onended = () => {
+        if (cancelled) return;
+        setProgress(1);
+        setIsSpeaking(false);
+        scheduleNext(1700);
+      };
+      audio.onerror = () => {
+        if (!cancelled) speakWithBrowser();
+      };
+      audio.play().catch(() => {
+        if (!cancelled) speakWithBrowser();
+      });
+    };
+
     const runNarration = async () => {
       if (muted) {
+        const estimatedMs = Math.round(fallbackDurationMs / playbackRate);
         setIsSpeaking(false);
-        scheduleNext(Math.round(fallbackDurationMs / playbackRate));
+        startTimerProgress(estimatedMs);
+        scheduleNext(estimatedMs);
         return;
       }
 
       const cachedDataUrl = audioCacheRef.current.get(sceneId);
       if (cachedDataUrl) {
-        const audio = new Audio(cachedDataUrl);
-        audio.playbackRate = playbackRate;
-        audioElRef.current = audio;
-        setVoiceEngine('gemini');
-        setIsSpeaking(true);
-        audio.onended = () => {
-          if (cancelled) return;
-          setIsSpeaking(false);
-          scheduleNext(1700);
-        };
-        audio.onerror = () => {
-          if (!cancelled) speakWithBrowser();
-        };
-        audio.play().catch(() => {
-          if (!cancelled) speakWithBrowser();
-        });
+        playWavDataUrl(cachedDataUrl);
         return;
       }
 
@@ -194,23 +246,7 @@ export function useNarrator({
         audioCacheRef.current.set(sceneId, dataUrl);
 
         if (cancelled) return;
-        const audio = new Audio(dataUrl);
-        audio.playbackRate = playbackRate;
-        audioElRef.current = audio;
-        setVoiceEngine('gemini');
-        setIsSpeaking(true);
-
-        audio.onended = () => {
-          if (cancelled) return;
-          setIsSpeaking(false);
-          scheduleNext(1700);
-        };
-        audio.onerror = () => {
-          if (!cancelled) speakWithBrowser();
-        };
-        audio.play().catch(() => {
-          if (!cancelled) speakWithBrowser();
-        });
+        playWavDataUrl(dataUrl);
       } catch {
         if (cancelled) return;
         setIsLoadingAudio(false);
@@ -226,12 +262,11 @@ export function useNarrator({
     };
   }, [sceneId, text, isPlaying, muted, playbackRate, fallbackDurationMs, scheduleNext, stopAll]);
 
-  // Update playback rate dynamically if an HTMLAudioElement is active
   useEffect(() => {
     if (audioElRef.current) {
       audioElRef.current.playbackRate = playbackRate;
     }
   }, [playbackRate]);
 
-  return { voiceEngine, isLoadingAudio, isSpeaking, stopAll };
+  return { voiceEngine, isLoadingAudio, isSpeaking, progress, stopAll };
 }

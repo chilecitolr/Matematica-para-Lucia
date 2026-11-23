@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowRight,
@@ -12,6 +12,11 @@ import {
 import type { LessonScene, PedagogicalPhase } from '../types/lesson';
 import { ColorMath, FractionBox } from './ColorMath';
 import { playSoftFeedbackTone } from '../hooks/useNarrator';
+import {
+  getActiveCueAtProgress,
+  splitNarrationCues,
+  type SpotlightTarget,
+} from '../utils/spotlightCues';
 
 const PHASE_LABELS: Record<PedagogicalPhase, string> = {
   concepto: 'Comprendemos la idea',
@@ -32,8 +37,9 @@ interface VideoStageProps {
   chapterNumber: number;
   activityRef: string;
   isPlaying: boolean;
+  narrationProgress: number;
+  manualSpotlight?: SpotlightTarget;
   showSubtitles: boolean;
-  onPracticeResolved?: () => void;
 }
 
 export const VideoStage: React.FC<VideoStageProps> = ({
@@ -41,11 +47,45 @@ export const VideoStage: React.FC<VideoStageProps> = ({
   chapterTitle,
   chapterNumber,
   activityRef,
+  isPlaying,
+  narrationProgress,
+  manualSpotlight = 'none',
   showSubtitles,
 }) => {
+  const cues = useMemo(() => splitNarrationCues(scene.narration), [scene.narration]);
+  const { index: activeCueIdx, cue: activeCue } = useMemo(
+    () => getActiveCueAtProgress(cues, narrationProgress),
+    [cues, narrationProgress]
+  );
+
+  const activeTarget: SpotlightTarget =
+    manualSpotlight !== 'none'
+      ? manualSpotlight
+      : isPlaying || narrationProgress > 0
+        ? activeCue.target
+        : 'none';
+
+  const activeLabel =
+    manualSpotlight !== 'none'
+      ? ({
+          num: 'Señalando: Números / Coeficientes (Azul)',
+          var: 'Señalando: Letras / Parte literal (Verde)',
+          exp: 'Señalando: Exponentes / Grado (Naranja)',
+          neg: 'Señalando: Signos negativos (Rojo)',
+          numerador: 'Señalando: Numerador',
+          denominador: 'Señalando: Denominador',
+          flip: 'Señalando: Fracción invertida',
+          base: 'Señalando: Base',
+          area: 'Señalando: Área',
+          none: '',
+        }[manualSpotlight] || '')
+      : activeTarget !== 'none'
+        ? activeCue.label
+        : '';
+
   return (
     <div className="relative w-full bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-      {/* Top Stage Header Bar (uncluttered, single line metadata) */}
+      {/* Top Stage Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/70">
         <div className="flex items-center gap-3 text-sm text-slate-600">
           <span className="font-semibold text-slate-900">
@@ -59,7 +99,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
         </div>
       </div>
 
-      {/* Main 16:9-proportioned Accessible Stage Canvas */}
+      {/* Main Accessible Stage Canvas */}
       <div className="min-h-[430px] md:min-h-[480px] px-6 py-7 md:px-10 md:py-8 flex flex-col justify-between bg-white">
         <AnimatePresence mode="wait">
           <motion.div
@@ -70,19 +110,26 @@ export const VideoStage: React.FC<VideoStageProps> = ({
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             className="flex-1 flex flex-col justify-between gap-6"
           >
-            {/* Scene Title & Key Takeaway */}
-            <div className="space-y-2 max-w-3xl">
-              <h2 className="font-display text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-                {scene.headline}
-              </h2>
-              <p className="text-base md:text-lg text-slate-700 leading-relaxed">
-                {scene.keyMessage}
-              </p>
+            {/* Scene Title, Key Takeaway & Active Spotlight Indicator */}
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2 max-w-3xl">
+                <h2 className="font-display text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+                  {scene.headline}
+                </h2>
+                <p className="text-base md:text-lg text-slate-700 leading-relaxed">
+                  {scene.keyMessage}
+                </p>
+              </div>
+              {activeLabel && (
+                <div className="text-xs md:text-sm font-semibold text-slate-800 bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 shrink-0">
+                  {activeLabel}
+                </div>
+              )}
             </div>
 
             {/* Central Visual Diagram Area */}
             <div className="flex-1 flex items-center justify-center py-2">
-              <DiagramRenderer scene={scene} />
+              <DiagramRenderer scene={scene} highlightTarget={activeTarget} />
             </div>
 
             {/* Supportive Reassurance Line */}
@@ -96,11 +143,27 @@ export const VideoStage: React.FC<VideoStageProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Calm High-Contrast Subtitle Strip */}
+      {/* Calm High-Contrast Subtitle Strip with Live Sentence Tracking */}
       {showSubtitles && (
         <div className="px-6 py-4 bg-slate-900 text-slate-50 border-t border-slate-800">
           <p className="text-base md:text-[17px] leading-relaxed text-center max-w-4xl mx-auto tracking-wide">
-            {scene.narration}
+            {cues.map((cue, idx) => {
+              const isActive = (isPlaying || narrationProgress > 0) && idx === activeCueIdx;
+              return (
+                <span
+                  key={idx}
+                  className={`transition-opacity duration-200 ${
+                    isPlaying || narrationProgress > 0
+                      ? isActive
+                        ? 'text-white font-semibold opacity-100 underline decoration-blue-400 decoration-2 underline-offset-4'
+                        : 'text-slate-300 opacity-65'
+                      : 'text-slate-100 opacity-100'
+                  }`}
+                >
+                  {cue.text}{' '}
+                </span>
+              );
+            })}
           </p>
         </div>
       )}
@@ -108,7 +171,10 @@ export const VideoStage: React.FC<VideoStageProps> = ({
   );
 };
 
-const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
+const DiagramRenderer: React.FC<{
+  scene: LessonScene;
+  highlightTarget: SpotlightTarget;
+}> = ({ scene, highlightTarget }) => {
   const { diagram } = scene;
 
   switch (diagram.type) {
@@ -117,6 +183,8 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
       const radius = 84;
       const cx = 100;
       const cy = 100;
+      const hiNum = highlightTarget === 'numerador';
+      const hiDen = highlightTarget === 'denominador';
 
       const makeSlicePath = (idx: number) => {
         const startAngle = ((idx * anglePerSlice - 90) * Math.PI) / 180;
@@ -132,7 +200,14 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
       return (
         <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="flex flex-col items-center gap-3">
-            <svg viewBox="0 0 200 200" className="w-52 h-52" role="img" aria-label={diagram.caption}>
+            <svg
+              viewBox="0 0 200 200"
+              className={`w-52 h-52 transition-transform duration-300 ${
+                hiNum || hiDen ? 'scale-105' : ''
+              }`}
+              role="img"
+              aria-label={diagram.caption}
+            >
               {Array.from({ length: diagram.total }).map((_, idx) => {
                 const filled = idx < diagram.slices;
                 return (
@@ -142,9 +217,17 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
                     initial={{ opacity: 0.4, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.14, duration: 0.35 }}
-                    fill={filled ? '#DBEAFE' : '#F8FAFC'}
-                    stroke="#1E293B"
-                    strokeWidth="2.5"
+                    fill={
+                      filled
+                        ? hiNum
+                          ? '#93C5FD'
+                          : '#DBEAFE'
+                        : hiDen
+                          ? '#E2E8F0'
+                          : '#F8FAFC'
+                    }
+                    stroke={hiDen ? '#1D4ED8' : '#1E293B'}
+                    strokeWidth={hiDen ? '3.5' : '2.5'}
                   />
                 );
               })}
@@ -158,16 +241,25 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
                 num={String(diagram.slices)}
                 den={String(diagram.total)}
                 size="xl"
+                highlightTarget={highlightTarget}
               />
               <div className="space-y-3 text-base">
-                <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-2 p-2 rounded-lg transition-transform duration-300 ${
+                    hiNum ? 'scale-105 bg-blue-50 ring-2 ring-blue-300' : ''
+                  }`}
+                >
                   <ArrowRight className="w-4 h-4 text-blue-700 shrink-0" />
                   <span>
                     <strong className="text-blue-700">Numerador ({diagram.slices})</strong>:
                     partes que tomamos
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-2 p-2 rounded-lg transition-transform duration-300 ${
+                    hiDen ? 'scale-105 bg-blue-50 ring-2 ring-blue-300' : ''
+                  }`}
+                >
                   <ArrowRight className="w-4 h-4 text-blue-700 shrink-0" />
                   <span>
                     <strong className="text-blue-700">Denominador ({diagram.total})</strong>:
@@ -188,7 +280,10 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
           : diagram.leftNum - diagram.rightNum;
 
       const renderBar = (filled: number, total: number, colorClass: string) => (
-        <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}>
+        <div
+          className="grid gap-1 w-full"
+          style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}
+        >
           {Array.from({ length: total }).map((_, i) => (
             <div
               key={i}
@@ -203,9 +298,19 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
       return (
         <div className="w-full max-w-3xl space-y-6">
           <div className="flex flex-wrap items-center justify-center gap-5 md:gap-8">
-            <FractionBox num={String(diagram.leftNum)} den={String(diagram.den)} size="xl" />
+            <FractionBox
+              num={String(diagram.leftNum)}
+              den={String(diagram.den)}
+              size="xl"
+              highlightTarget={highlightTarget}
+            />
             <span className="text-3xl font-bold text-slate-700">{diagram.op}</span>
-            <FractionBox num={String(diagram.rightNum)} den={String(diagram.den)} size="xl" />
+            <FractionBox
+              num={String(diagram.rightNum)}
+              den={String(diagram.den)}
+              size="xl"
+              highlightTarget={highlightTarget}
+            />
             <span className="text-3xl font-bold text-slate-700">=</span>
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }}
@@ -213,7 +318,12 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
               transition={{ delay: 0.35, duration: 0.4 }}
               className="px-5 py-3 rounded-xl bg-blue-50 border border-blue-200"
             >
-              <FractionBox num={String(resultNum)} den={String(diagram.den)} size="xl" />
+              <FractionBox
+                num={String(resultNum)}
+                den={String(diagram.den)}
+                size="xl"
+                highlightTarget={highlightTarget}
+              />
             </motion.div>
           </div>
 
@@ -234,7 +344,10 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
               <span className="font-math text-sm font-bold text-blue-800 w-14">
                 Total {resultNum}/{diagram.den}
               </span>
-              <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `repeat(${diagram.den}, minmax(0, 1fr))` }}>
+              <div
+                className="grid gap-1 w-full"
+                style={{ gridTemplateColumns: `repeat(${diagram.den}, minmax(0, 1fr))` }}
+              >
                 {Array.from({ length: diagram.den }).map((_, i) => (
                   <div
                     key={i}
@@ -267,7 +380,12 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
         <div className="w-full max-w-3xl space-y-6">
           <div className="flex flex-wrap items-center justify-center gap-5">
             <div className="flex flex-col items-center gap-2">
-              <FractionBox num={String(ln)} den={String(ld)} size="xl" />
+              <FractionBox
+                num={String(ln)}
+                den={String(ld)}
+                size="xl"
+                highlightTarget={highlightTarget}
+              />
               {diagram.stage !== 'original' && (
                 <span className="text-sm font-medium text-slate-600">
                   × {multL} arriba y abajo
@@ -278,7 +396,12 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
             <span className="text-3xl font-bold text-slate-700">{diagram.op}</span>
 
             <div className="flex flex-col items-center gap-2">
-              <FractionBox num={String(rn)} den={String(rd)} size="xl" />
+              <FractionBox
+                num={String(rn)}
+                den={String(rd)}
+                size="xl"
+                highlightTarget={highlightTarget}
+              />
               {diagram.stage !== 'original' && (
                 <span className="text-sm font-medium text-slate-600">
                   × {multR} arriba y abajo
@@ -294,9 +417,19 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
                   animate={{ opacity: 1, x: 0 }}
                   className="flex items-center gap-4 bg-slate-50 px-5 py-3 rounded-xl border border-slate-200"
                 >
-                  <FractionBox num={String(eqL)} den={String(diagram.commonDen)} size="xl" />
+                  <FractionBox
+                    num={String(eqL)}
+                    den={String(diagram.commonDen)}
+                    size="xl"
+                    highlightTarget={highlightTarget}
+                  />
                   <span className="text-3xl font-bold text-slate-700">{diagram.op}</span>
-                  <FractionBox num={String(eqR)} den={String(diagram.commonDen)} size="xl" />
+                  <FractionBox
+                    num={String(eqR)}
+                    den={String(diagram.commonDen)}
+                    size="xl"
+                    highlightTarget={highlightTarget}
+                  />
                 </motion.div>
               </>
             )}
@@ -309,7 +442,12 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
                   animate={{ opacity: 1, scale: 1 }}
                   className="px-5 py-3 rounded-xl bg-blue-50 border border-blue-200"
                 >
-                  <FractionBox num={String(sum)} den={String(diagram.commonDen)} size="xl" />
+                  <FractionBox
+                    num={String(sum)}
+                    den={String(diagram.commonDen)}
+                    size="xl"
+                    highlightTarget={highlightTarget}
+                  />
                 </motion.div>
               </>
             )}
@@ -328,12 +466,19 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
     }
 
     case 'fraction-flip': {
+      const hiFlip = highlightTarget === 'flip';
       return (
         <div className="w-full max-w-3xl space-y-6">
           <div className="flex flex-wrap items-center justify-center gap-5 md:gap-7">
-            <ColorMath expr={diagram.first} size="2xl" />
+            <ColorMath expr={diagram.first} size="2xl" highlightTarget={highlightTarget} />
             <span className="text-3xl font-bold text-slate-500">÷</span>
-            <FractionBox num={diagram.secondNum} den={diagram.secondDen} sign="+" size="xl" />
+            <FractionBox
+              num={diagram.secondNum}
+              den={diagram.secondDen}
+              sign="+"
+              size="xl"
+              highlightTarget={highlightTarget}
+            />
 
             <ArrowRight className="w-8 h-8 text-blue-600" />
 
@@ -341,12 +486,20 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
-              className="flex items-center gap-5 px-6 py-4 rounded-xl bg-blue-50/70 border border-blue-200"
+              className={`flex items-center gap-5 px-6 py-4 rounded-xl bg-blue-50/70 border transition-transform duration-300 ${
+                hiFlip ? 'scale-110 ring-4 ring-blue-300 border-blue-500' : 'border-blue-200'
+              }`}
             >
-              <ColorMath expr={diagram.first} size="2xl" />
+              <ColorMath expr={diagram.first} size="2xl" highlightTarget={highlightTarget} />
               <span className="text-3xl font-bold text-blue-700">×</span>
               <div className="flex flex-col items-center">
-                <FractionBox num={diagram.secondDen} den={diagram.secondNum} sign="+" size="xl" />
+                <FractionBox
+                  num={diagram.secondDen}
+                  den={diagram.secondNum}
+                  sign="+"
+                  size="xl"
+                  highlightTarget={highlightTarget}
+                />
                 <span className="text-xs font-semibold text-blue-700 mt-1">
                   Se dio vuelta
                 </span>
@@ -356,14 +509,20 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
 
           <div className="flex flex-wrap items-center justify-center gap-6 text-base">
             {diagram.signNote && (
-              <span className="px-4 py-2 rounded-lg bg-slate-100 text-slate-800 font-medium">
+              <span
+                className={`px-4 py-2 rounded-lg font-medium transition-transform duration-300 ${
+                  highlightTarget === 'neg'
+                    ? 'scale-110 bg-red-100 text-red-900 ring-2 ring-red-400'
+                    : 'bg-slate-100 text-slate-800'
+                }`}
+              >
                 Signos: {diagram.signNote}
               </span>
             )}
             {diagram.result && (
               <div className="px-5 py-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center gap-3">
                 <span className="text-slate-600 font-medium">Resultado:</span>
-                <ColorMath expr={diagram.result} size="lg" />
+                <ColorMath expr={diagram.result} size="lg" highlightTarget={highlightTarget} />
               </div>
             )}
           </div>
@@ -374,21 +533,41 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
     case 'power-visual': {
       const baseNum = Number(diagram.base);
       const count = !Number.isNaN(baseNum) && baseNum <= 5 ? baseNum : 3;
+      const hiBase = highlightTarget === 'base' || highlightTarget === 'num';
+      const hiExp = highlightTarget === 'exp';
 
       return (
         <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-start font-math">
-              <span className="text-6xl font-bold text-blue-700">{diagram.base}</span>
-              <span className="text-3xl font-bold text-orange-600 -mt-1 ml-1">
+              <span
+                className={`text-6xl font-bold text-blue-700 transition-transform duration-300 ${
+                  hiBase ? 'scale-125 bg-blue-100 ring-4 ring-blue-300 rounded-xl px-3' : ''
+                }`}
+              >
+                {diagram.base}
+              </span>
+              <span
+                className={`text-3xl font-bold text-orange-600 -mt-1 ml-1 transition-transform duration-300 ${
+                  hiExp ? 'scale-150 bg-orange-100 ring-4 ring-orange-300 rounded-lg px-2' : ''
+                }`}
+              >
                 {diagram.exp}
               </span>
             </div>
-            <div className="text-base text-slate-700 space-y-1 text-center">
-              <div>
+            <div className="text-base text-slate-700 space-y-2 text-center">
+              <div
+                className={`px-3 py-1 rounded-lg transition-transform duration-300 ${
+                  hiBase ? 'scale-105 bg-blue-50 ring-2 ring-blue-300' : ''
+                }`}
+              >
                 <strong className="text-blue-700">Base ({diagram.base})</strong>: número que se repite
               </div>
-              <div>
+              <div
+                className={`px-3 py-1 rounded-lg transition-transform duration-300 ${
+                  hiExp ? 'scale-105 bg-orange-50 ring-2 ring-orange-300' : ''
+                }`}
+              >
                 <strong className="text-orange-600">Exponente ({diagram.exp})</strong>: cuántas veces se multiplica
               </div>
             </div>
@@ -397,9 +576,12 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
           <div className="space-y-4">
             <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-center justify-center gap-3 text-2xl font-math">
-                <ColorMath expr={`${diagram.expanded} = ${diagram.result}`} size="xl" />
+                <ColorMath
+                  expr={`${diagram.expanded} = ${diagram.result}`}
+                  size="xl"
+                  highlightTarget={highlightTarget}
+                />
               </div>
-              {/* Visual 3x3 square grid */}
               <div
                 className="grid gap-1.5 w-36 mx-auto pt-1"
                 style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
@@ -417,7 +599,11 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
             </div>
 
             {diagram.warningCompare && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm font-medium text-center">
+              <div
+                className={`p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm font-medium text-center transition-transform duration-300 ${
+                  highlightTarget === 'neg' ? 'scale-105 ring-2 ring-red-300' : ''
+                }`}
+              >
                 {diagram.warningCompare}
               </div>
             )}
@@ -433,12 +619,30 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
           <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div className="flex flex-col items-center gap-4">
               <div className="text-4xl md:text-5xl font-math font-bold text-slate-900">
-                √<span className="text-blue-700">{diagram.radicandNum}</span> ={' '}
-                <span className="text-blue-700">{diagram.rootNum}</span>
+                √
+                <span
+                  className={`inline-block text-blue-700 transition-transform duration-300 ${
+                    highlightTarget === 'num' ? 'scale-115 bg-blue-100 rounded-lg px-2' : ''
+                  }`}
+                >
+                  {diagram.radicandNum}
+                </span>{' '}
+                ={' '}
+                <span
+                  className={`inline-block text-blue-700 transition-transform duration-300 ${
+                    highlightTarget === 'num' ? 'scale-125 bg-blue-100 ring-2 ring-blue-400 rounded-lg px-2' : ''
+                  }`}
+                >
+                  {diagram.rootNum}
+                </span>
               </div>
               <div className="text-lg text-slate-700 font-medium">
                 Porque{' '}
-                <ColorMath expr={`${diagram.rootNum} × ${diagram.rootNum} = ${diagram.radicandNum}`} size="md" />
+                <ColorMath
+                  expr={`${diagram.rootNum} × ${diagram.rootNum} = ${diagram.radicandNum}`}
+                  size="md"
+                  highlightTarget={highlightTarget}
+                />
               </div>
             </div>
 
@@ -470,13 +674,18 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
         );
       }
 
-      // Cube visual (3x3x3 = 27)
       return (
         <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="flex flex-col items-center gap-4">
             <div className="text-4xl md:text-5xl font-math font-bold text-slate-900">
-              <sup className="text-orange-600 text-2xl mr-0.5">3</sup>√
-              <span className="text-blue-700">{diagram.radicandNum}</span> ={' '}
+              <sup
+                className={`inline-block text-orange-600 text-2xl mr-0.5 transition-transform duration-300 ${
+                  highlightTarget === 'exp' ? 'scale-150 bg-orange-100 ring-2 ring-orange-400 rounded px-1' : ''
+                }`}
+              >
+                3
+              </sup>
+              √<span className="text-blue-700">{diagram.radicandNum}</span> ={' '}
               <span className="text-blue-700">{diagram.rootNum}</span>
             </div>
             <div className="text-lg text-slate-700 font-medium text-center">
@@ -484,27 +693,24 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
               <ColorMath
                 expr={`${diagram.rootNum} × ${diagram.rootNum} × ${diagram.rootNum} = ${diagram.radicandNum}`}
                 size="md"
+                highlightTarget={highlightTarget}
               />
             </div>
           </div>
 
           <div className="flex flex-col items-center gap-2">
             <svg viewBox="0 0 220 210" className="w-52 h-48" role="img" aria-label="Cubo de 3 por 3 por 3">
-              {/* Isometric 3x3x3 cube */}
               <polygon points="110,20 185,60 110,100 35,60" fill="#DBEAFE" stroke="#1E293B" strokeWidth="2" />
               <polygon points="35,60 110,100 110,185 35,145" fill="#93C5FD" stroke="#1E293B" strokeWidth="2" />
               <polygon points="185,60 110,100 110,185 185,145" fill="#60A5FA" stroke="#1E293B" strokeWidth="2" />
-              {/* 3x3 grid lines on top */}
               <line x1="60" y1="47" x2="135" y2="87" stroke="#1E293B" strokeWidth="1.2" />
               <line x1="85" y1="33" x2="160" y2="73" stroke="#1E293B" strokeWidth="1.2" />
               <line x1="135" y1="33" x2="60" y2="73" stroke="#1E293B" strokeWidth="1.2" />
               <line x1="160" y1="47" x2="85" y2="87" stroke="#1E293B" strokeWidth="1.2" />
-              {/* Front-left grid lines */}
               <line x1="60" y1="73" x2="60" y2="158" stroke="#1E293B" strokeWidth="1.2" />
               <line x1="85" y1="87" x2="85" y2="172" stroke="#1E293B" strokeWidth="1.2" />
               <line x1="35" y1="88" x2="110" y2="128" stroke="#1E293B" strokeWidth="1.2" />
               <line x1="35" y1="116" x2="110" y2="156" stroke="#1E293B" strokeWidth="1.2" />
-              {/* Front-right grid lines */}
               <line x1="135" y1="87" x2="135" y2="172" stroke="#1E293B" strokeWidth="1.2" />
               <line x1="160" y1="73" x2="160" y2="158" stroke="#1E293B" strokeWidth="1.2" />
               <line x1="110" y1="128" x2="185" y2="88" stroke="#1E293B" strokeWidth="1.2" />
@@ -534,9 +740,9 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
               return (
                 <div
                   key={s.num}
-                  className={`px-4 py-2.5 rounded-xl border text-sm md:text-base transition-colors ${
+                  className={`px-4 py-2.5 rounded-xl border text-sm md:text-base transition-transform duration-300 ${
                     active
-                      ? 'bg-blue-50 border-blue-300 text-blue-900 font-semibold'
+                      ? 'scale-[1.03] bg-blue-50 border-blue-400 text-blue-900 font-semibold ring-2 ring-blue-200'
                       : 'bg-slate-50 border-slate-200 text-slate-600'
                   }`}
                 >
@@ -547,7 +753,11 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
           </div>
 
           <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 space-y-4 text-center">
-            <ColorMath expr={diagram.expression} size="lg" />
+            <ColorMath
+              expr={diagram.expression}
+              size="lg"
+              highlightTarget={highlightTarget}
+            />
             <p className="text-sm text-slate-700 leading-relaxed">{diagram.stepNote}</p>
           </div>
         </div>
@@ -555,24 +765,47 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
     }
 
     case 'monomio-parts': {
+      const hiNeg = highlightTarget === 'neg';
+      const hiNum = highlightTarget === 'num';
+      const hiVar = highlightTarget === 'var';
+      const hiExp = highlightTarget === 'exp';
+
       return (
         <div className="w-full max-w-3xl flex flex-col items-center gap-6">
-          <div className="flex items-baseline justify-center gap-1 px-8 py-6 rounded-2xl bg-slate-50 border border-slate-200">
+          <div className="flex items-baseline justify-center gap-2 px-10 py-7 rounded-2xl bg-slate-50 border border-slate-200">
             {diagram.sign && (
-              <span className="font-math text-6xl font-bold text-red-600 mr-1">
+              <span
+                className={`inline-block font-math text-6xl font-bold text-red-600 mr-1 transition-transform duration-300 ${
+                  hiNeg ? 'scale-125 bg-red-100 ring-4 ring-red-300 rounded-xl px-2' : ''
+                }`}
+              >
                 {diagram.sign}
               </span>
             )}
-            <span className="font-math text-6xl font-bold text-blue-700">
+            <span
+              className={`inline-block font-math text-6xl font-bold text-blue-700 transition-transform duration-300 ${
+                hiNum ? 'scale-125 bg-blue-100 ring-4 ring-blue-300 rounded-xl px-3' : ''
+              }`}
+            >
               {diagram.coeff}
             </span>
             {diagram.vars.map((v, idx) => (
               <span key={idx} className="inline-flex items-start ml-1">
-                <span className="font-math text-6xl font-bold italic text-emerald-700">
+                <span
+                  className={`inline-block font-math text-6xl font-bold italic text-emerald-700 transition-transform duration-300 ${
+                    hiVar
+                      ? 'scale-125 bg-emerald-100 ring-4 ring-emerald-300 rounded-xl px-3 not-italic'
+                      : ''
+                  }`}
+                >
                   {v.letter}
                 </span>
                 {v.exp && (
-                  <span className="font-math text-3xl font-bold text-orange-600 -mt-1 ml-0.5">
+                  <span
+                    className={`inline-block font-math text-3xl font-bold text-orange-600 -mt-1 ml-1 transition-transform duration-300 ${
+                      hiExp ? 'scale-150 bg-orange-100 ring-4 ring-orange-300 rounded-lg px-2' : ''
+                    }`}
+                  >
                     {v.exp}
                   </span>
                 )}
@@ -582,24 +815,42 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full text-center text-sm">
             {diagram.sign && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800">
+              <div
+                className={`p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 transition-transform duration-300 ${
+                  hiNeg ? 'scale-105 ring-4 ring-red-300' : ''
+                }`}
+              >
                 <div className="font-semibold">Signo negativo</div>
                 <div className="font-math text-lg font-bold mt-1">{diagram.sign}</div>
               </div>
             )}
-            <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900">
+            <div
+              className={`p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 transition-transform duration-300 ${
+                hiNum ? 'scale-105 ring-4 ring-blue-300' : ''
+              }`}
+            >
               <div className="font-semibold">Coeficiente</div>
               <div className="font-math text-lg font-bold mt-1">
                 {diagram.sign ? `${diagram.sign}${diagram.coeff}` : diagram.coeff}
               </div>
             </div>
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+            <div
+              className={`p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 transition-transform duration-300 ${
+                hiVar ? 'scale-105 ring-4 ring-emerald-300' : ''
+              }`}
+            >
               <div className="font-semibold">Parte literal</div>
               <div className="font-math text-lg font-bold mt-1">
-                {diagram.vars.map((v) => `${v.letter}${v.exp && v.exp !== '1' ? `^${v.exp}` : ''}`).join('')}
+                {diagram.vars
+                  .map((v) => `${v.letter}${v.exp && v.exp !== '1' ? `^${v.exp}` : ''}`)
+                  .join('')}
               </div>
             </div>
-            <div className="p-3 rounded-xl bg-orange-50 border border-orange-200 text-orange-900">
+            <div
+              className={`p-3 rounded-xl bg-orange-50 border border-orange-200 text-orange-900 transition-transform duration-300 ${
+                hiExp ? 'scale-105 ring-4 ring-orange-300' : ''
+              }`}
+            >
               <div className="font-semibold">Grado absoluto</div>
               <div className="font-math text-lg font-bold mt-1">{diagram.degree}</div>
             </div>
@@ -628,9 +879,27 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-700">
                 <th className="py-2.5 px-4 font-semibold">Monomio</th>
-                <th className="py-2.5 px-4 font-semibold text-blue-700">Coeficiente</th>
-                <th className="py-2.5 px-4 font-semibold text-emerald-700">Parte literal</th>
-                <th className="py-2.5 px-4 font-semibold text-orange-700">Grado absoluto</th>
+                <th
+                  className={`py-2.5 px-4 font-semibold text-blue-700 ${
+                    highlightTarget === 'num' ? 'bg-blue-100' : ''
+                  }`}
+                >
+                  Coeficiente
+                </th>
+                <th
+                  className={`py-2.5 px-4 font-semibold text-emerald-700 ${
+                    highlightTarget === 'var' ? 'bg-emerald-100' : ''
+                  }`}
+                >
+                  Parte literal
+                </th>
+                <th
+                  className={`py-2.5 px-4 font-semibold text-orange-700 ${
+                    highlightTarget === 'exp' ? 'bg-orange-100' : ''
+                  }`}
+                >
+                  Grado absoluto
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -642,15 +911,31 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
                   }`}
                 >
                   <td className="py-2.5 px-4">
-                    <ColorMath expr={r.monomio} size="md" />
+                    <ColorMath
+                      expr={r.monomio}
+                      size="md"
+                      highlightTarget={highlightTarget}
+                    />
                   </td>
-                  <td className="py-2.5 px-4 font-math font-semibold text-blue-700">
+                  <td
+                    className={`py-2.5 px-4 font-math font-semibold text-blue-700 transition-transform ${
+                      highlightTarget === 'num' ? 'bg-blue-50 text-lg font-bold' : ''
+                    }`}
+                  >
                     {r.coef}
                   </td>
-                  <td className="py-2.5 px-4 font-math font-semibold text-emerald-700">
+                  <td
+                    className={`py-2.5 px-4 font-math font-semibold text-emerald-700 transition-transform ${
+                      highlightTarget === 'var' ? 'bg-emerald-50 text-lg font-bold' : ''
+                    }`}
+                  >
                     {r.literal}
                   </td>
-                  <td className="py-2.5 px-4 font-math font-semibold text-orange-700">
+                  <td
+                    className={`py-2.5 px-4 font-math font-semibold text-orange-700 transition-transform ${
+                      highlightTarget === 'exp' ? 'bg-orange-50 text-lg font-bold' : ''
+                    }`}
+                  >
                     {r.grado}
                   </td>
                 </tr>
@@ -669,7 +954,11 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
               <div className="w-12 h-12 rounded-lg bg-emerald-600 text-white font-math font-bold flex items-center justify-center text-sm">
                 x²
               </div>
-              <ColorMath expr={diagram.leftLabel} size="xl" />
+              <ColorMath
+                expr={diagram.leftLabel}
+                size="xl"
+                highlightTarget={highlightTarget}
+              />
             </div>
 
             <span className="text-3xl font-bold text-slate-700">+</span>
@@ -688,7 +977,11 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
               >
                 {diagram.sameFamily ? 'x²' : 'x³'}
               </div>
-              <ColorMath expr={diagram.rightLabel} size="xl" />
+              <ColorMath
+                expr={diagram.rightLabel}
+                size="xl"
+                highlightTarget={highlightTarget}
+              />
             </div>
 
             <ArrowRight className="w-7 h-7 text-slate-400" />
@@ -700,7 +993,11 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
                   : 'bg-red-50 border-red-200'
               }`}
             >
-              <ColorMath expr={diagram.resultLabel} size="xl" />
+              <ColorMath
+                expr={diagram.resultLabel}
+                size="xl"
+                highlightTarget={highlightTarget}
+              />
             </div>
           </div>
 
@@ -718,6 +1015,9 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
       const resultExp = isMul ? diagram.expA + diagram.expB : diagram.expA - diagram.expB;
       const opSymbol = isMul ? '×' : '÷';
       const expOpSymbol = isMul ? '+' : '−';
+      const hiNum = highlightTarget === 'num';
+      const hiExp = highlightTarget === 'exp';
+      const hiVar = highlightTarget === 'var';
 
       return (
         <div className="w-full max-w-3xl space-y-5">
@@ -725,11 +1025,16 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
             <ColorMath
               expr={`${diagram.coeffA}${diagram.baseVar}${toSup(diagram.expA)} ${opSymbol} ${diagram.coeffB}${diagram.baseVar}${toSup(diagram.expB)} = ${diagram.coeffResult}${diagram.baseVar}${toSup(resultExp)}`}
               size="xl"
+              highlightTarget={highlightTarget}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+            <div
+              className={`p-4 rounded-xl bg-blue-50 border border-blue-200 transition-transform duration-300 ${
+                hiNum ? 'scale-105 ring-4 ring-blue-300' : ''
+              }`}
+            >
               <div className="text-sm font-semibold text-blue-900 mb-1">
                 Paso 1 · Números (coeficientes)
               </div>
@@ -738,7 +1043,11 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-orange-50 border border-orange-200">
+            <div
+              className={`p-4 rounded-xl bg-orange-50 border border-orange-200 transition-transform duration-300 ${
+                hiExp ? 'scale-105 ring-4 ring-orange-300' : ''
+              }`}
+            >
               <div className="text-sm font-semibold text-orange-900 mb-1">
                 Paso 2 · Exponentes de la letra {diagram.baseVar}
               </div>
@@ -748,8 +1057,11 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
             </div>
           </div>
 
-          {/* Visual block expansion of x's */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2">
+          <div
+            className={`p-4 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 transition-transform duration-300 ${
+              hiVar ? 'scale-[1.03] ring-2 ring-emerald-300' : ''
+            }`}
+          >
             <div className="text-sm text-slate-600 font-medium">
               {isMul
                 ? `Juntamos ${diagram.expA} letras "${diagram.baseVar}" con ${diagram.expB} letras "${diagram.baseVar}": quedan ${resultExp} en total.`
@@ -761,11 +1073,11 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
                 return (
                   <span
                     key={`a-${i}`}
-                    className={`w-9 h-9 rounded-lg font-math font-bold flex items-center justify-center border ${
+                    className={`w-9 h-9 rounded-lg font-math font-bold flex items-center justify-center border transition-transform duration-300 ${
                       canceled
                         ? 'bg-red-50 border-red-200 text-red-400 line-through'
                         : 'bg-emerald-100 border-emerald-300 text-emerald-800'
-                    }`}
+                    } ${hiVar && !canceled ? 'scale-115 ring-2 ring-emerald-400' : ''}`}
                   >
                     {diagram.baseVar}
                   </span>
@@ -777,7 +1089,9 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
                   {Array.from({ length: diagram.expB }).map((_, i) => (
                     <span
                       key={`b-${i}`}
-                      className="w-9 h-9 rounded-lg font-math font-bold flex items-center justify-center border bg-emerald-100 border-emerald-300 text-emerald-800"
+                      className={`w-9 h-9 rounded-lg font-math font-bold flex items-center justify-center border bg-emerald-100 border-emerald-300 text-emerald-800 transition-transform duration-300 ${
+                        hiVar ? 'scale-115 ring-2 ring-emerald-400' : ''
+                      }`}
                     >
                       {diagram.baseVar}
                     </span>
@@ -791,26 +1105,47 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
     }
 
     case 'rectangle-area': {
+      const hiArea = highlightTarget === 'area';
       return (
         <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="flex flex-col items-center">
             <div className="mb-2">
-              <ColorMath expr={`Lado = ${diagram.widthLabel}`} size="lg" />
+              <ColorMath
+                expr={`Lado = ${diagram.widthLabel}`}
+                size="lg"
+                highlightTarget={highlightTarget}
+              />
             </div>
             <div className="flex items-center gap-3">
-              <div className="-rotate-0">
-                <ColorMath expr={diagram.heightLabel} size="lg" />
+              <div>
+                <ColorMath
+                  expr={diagram.heightLabel}
+                  size="lg"
+                  highlightTarget={highlightTarget}
+                />
               </div>
-              <div className="w-60 h-36 rounded-xl bg-blue-50 border-2 border-blue-600 flex flex-col items-center justify-center gap-1">
+              <div
+                className={`w-60 h-36 rounded-xl bg-blue-50 border-2 border-blue-600 flex flex-col items-center justify-center gap-1 transition-transform duration-300 ${
+                  hiArea ? 'scale-105 ring-4 ring-blue-300' : ''
+                }`}
+              >
                 <span className="text-sm font-medium text-slate-600">Área</span>
                 {diagram.showResult && (
-                  <ColorMath expr={diagram.areaLabel} size="xl" />
+                  <ColorMath
+                    expr={diagram.areaLabel}
+                    size="xl"
+                    highlightTarget={highlightTarget}
+                  />
                 )}
               </div>
             </div>
           </div>
 
-          <div className="space-y-3 p-5 rounded-xl bg-slate-50 border border-slate-200">
+          <div
+            className={`space-y-3 p-5 rounded-xl bg-slate-50 border border-slate-200 transition-transform duration-300 ${
+              hiArea ? 'scale-105 ring-2 ring-blue-300' : ''
+            }`}
+          >
             <div className="text-sm font-semibold text-slate-700">
               Regla: Área = lado × lado
             </div>
@@ -818,13 +1153,18 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
               <ColorMath
                 expr={`Área = ${diagram.widthLabel} × ${diagram.heightLabel}`}
                 size="lg"
+                highlightTarget={highlightTarget}
               />
             </div>
             <div className="text-sm text-slate-600">
               3 × 2 = 6 &nbsp;·&nbsp; x² × x¹ = x³
             </div>
             <div className="pt-2 border-t border-slate-200">
-              <ColorMath expr={`Área = ${diagram.areaLabel}`} size="xl" />
+              <ColorMath
+                expr={`Área = ${diagram.areaLabel}`}
+                size="xl"
+                highlightTarget={highlightTarget}
+              />
             </div>
           </div>
         </div>
@@ -855,7 +1195,11 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
                     {line.label}
                   </span>
                 )}
-                <ColorMath expr={line.math} size="md" />
+                <ColorMath
+                  expr={line.math}
+                  size="md"
+                  highlightTarget={highlightTarget}
+                />
               </div>
               {line.note && (
                 <span className="text-xs md:text-sm text-slate-600">{line.note}</span>
@@ -867,7 +1211,13 @@ const DiagramRenderer: React.FC<{ scene: LessonScene }> = ({ scene }) => {
     }
 
     case 'practice-challenge': {
-      return <PracticeChallengeView sceneId={scene.id} diagram={diagram} />;
+      return (
+        <PracticeChallengeView
+          sceneId={scene.id}
+          diagram={diagram}
+          highlightTarget={highlightTarget}
+        />
+      );
     }
 
     case 'final-summary': {
@@ -928,7 +1278,8 @@ function toSup(n: number): string {
 const PracticeChallengeView: React.FC<{
   sceneId: string;
   diagram: Extract<LessonScene['diagram'], { type: 'practice-challenge' }>;
-}> = ({ sceneId, diagram }) => {
+  highlightTarget: SpotlightTarget;
+}> = ({ sceneId, diagram, highlightTarget }) => {
   const [secondsLeft, setSecondsLeft] = useState(15);
   const [timerPaused, setTimerPaused] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -965,13 +1316,16 @@ const PracticeChallengeView: React.FC<{
 
   return (
     <div className="w-full max-w-3xl space-y-5">
-      {/* Calm pause timer & expression */}
       <div className="flex flex-wrap items-center justify-between gap-4 p-5 rounded-xl bg-slate-50 border border-slate-200">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-blue-700 mb-1">
             Pausa para pensar
           </div>
-          <ColorMath expr={diagram.promptMath} size="xl" />
+          <ColorMath
+            expr={diagram.promptMath}
+            size="xl"
+            highlightTarget={highlightTarget}
+          />
         </div>
 
         <div className="flex items-center gap-2">
@@ -998,7 +1352,6 @@ const PracticeChallengeView: React.FC<{
 
       <p className="text-base font-medium text-slate-800">{diagram.question}</p>
 
-      {/* Interactive Options */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {diagram.options.map((opt) => {
           const isSelected = selectedId === opt.id;
@@ -1016,13 +1369,16 @@ const PracticeChallengeView: React.FC<{
               onClick={() => handleSelect(opt)}
               className={`p-4 rounded-xl border-2 text-left transition-colors cursor-pointer min-h-[56px] ${style}`}
             >
-              <ColorMath expr={opt.label} size="md" />
+              <ColorMath
+                expr={opt.label}
+                size="md"
+                highlightTarget={highlightTarget}
+              />
             </button>
           );
         })}
       </div>
 
-      {/* Gentle Feedback */}
       {selectedOption && (
         <div
           className={`p-4 rounded-xl border text-sm md:text-base ${
@@ -1035,7 +1391,6 @@ const PracticeChallengeView: React.FC<{
         </div>
       )}
 
-      {/* Action Buttons: Hint + Slow Solution Reveal */}
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"

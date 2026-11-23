@@ -19,6 +19,7 @@ import type { Chapter, LessonScene, VideoModule } from './types/lesson';
 import { VideoStage } from './components/VideoStage';
 import { useNarrator } from './hooks/useNarrator';
 import { DownloadCenterModal } from './components/DownloadCenterModal';
+import type { SpotlightTarget } from './utils/spotlightCues';
 
 interface FlatSceneItem {
   chapter: Chapter;
@@ -37,6 +38,7 @@ export default function App() {
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [downloadTargetVideoId, setDownloadTargetVideoId] = useState<VideoModule['id'] | null>(null);
+  const [manualSpotlight, setManualSpotlight] = useState<SpotlightTarget>('none');
 
   const activeVideo = useMemo(
     () => VIDEO_MODULES.find((v) => v.id === activeVideoId) || VIDEO_MODULES[0],
@@ -108,7 +110,7 @@ export default function App() {
     handleNextScene();
   }, [isPracticeScene, handleNextScene]);
 
-  const { isLoadingAudio, isSpeaking, voiceEngine } = useNarrator({
+  const { isLoadingAudio, isSpeaking, voiceEngine, progress } = useNarrator({
     text: currentItem?.scene.narration || '',
     sceneId: `${currentItem?.scene.id || 'none'}-${replayNonce}`,
     isPlaying,
@@ -279,6 +281,8 @@ export default function App() {
                 chapterNumber={currentItem.chapter.number}
                 activityRef={currentItem.chapter.activityRef}
                 isPlaying={isPlaying}
+                narrationProgress={progress}
+                manualSpotlight={manualSpotlight}
                 showSubtitles={showSubtitles}
               />
             )}
@@ -435,28 +439,70 @@ export default function App() {
 
           {/* RIGHT ZONE: Constant Color Legend & Chapter / Scene Index */}
           <aside className="lg:col-span-4 space-y-5">
-            {/* Constant Visual Color Legend */}
+            {/* Interactive Constant Visual Color Legend */}
             <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-              <h2 className="font-display text-base font-bold text-slate-900">
-                Código de colores en toda la serie
-              </h2>
+              <div>
+                <h2 className="font-display text-base font-bold text-slate-900">
+                  Código de colores en toda la serie
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Tocá o pasá el mouse para agrandar cada parte en pantalla
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-2.5 text-sm">
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-blue-50/70 border border-blue-200">
-                  <span className="w-3.5 h-3.5 rounded-sm bg-blue-700 shrink-0" />
-                  <span className="text-slate-800 font-medium">Números</span>
-                </div>
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
-                  <span className="w-3.5 h-3.5 rounded-sm bg-emerald-700 shrink-0" />
-                  <span className="text-slate-800 font-medium">Letras</span>
-                </div>
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-orange-50/70 border border-orange-200">
-                  <span className="w-3.5 h-3.5 rounded-sm bg-orange-600 shrink-0" />
-                  <span className="text-slate-800 font-medium">Exponentes</span>
-                </div>
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-red-50/70 border border-red-200">
-                  <span className="w-3.5 h-3.5 rounded-sm bg-red-600 shrink-0" />
-                  <span className="text-slate-800 font-medium">Signos (−)</span>
-                </div>
+                {(
+                  [
+                    {
+                      target: 'num' as const,
+                      label: 'Números',
+                      box: 'bg-blue-50/70 border-blue-200 hover:border-blue-400',
+                      activeRing: 'ring-2 ring-blue-500 bg-blue-100',
+                      dot: 'bg-blue-700',
+                    },
+                    {
+                      target: 'var' as const,
+                      label: 'Letras',
+                      box: 'bg-emerald-50/70 border-emerald-200 hover:border-emerald-400',
+                      activeRing: 'ring-2 ring-emerald-500 bg-emerald-100',
+                      dot: 'bg-emerald-700',
+                    },
+                    {
+                      target: 'exp' as const,
+                      label: 'Exponentes',
+                      box: 'bg-orange-50/70 border-orange-200 hover:border-orange-400',
+                      activeRing: 'ring-2 ring-orange-500 bg-orange-100',
+                      dot: 'bg-orange-600',
+                    },
+                    {
+                      target: 'neg' as const,
+                      label: 'Signos (−)',
+                      box: 'bg-red-50/70 border-red-200 hover:border-red-400',
+                      activeRing: 'ring-2 ring-red-500 bg-red-100',
+                      dot: 'bg-red-600',
+                    },
+                  ] as const
+                ).map((item) => {
+                  const isActive = manualSpotlight === item.target;
+                  return (
+                    <button
+                      key={item.target}
+                      type="button"
+                      onMouseEnter={() => setManualSpotlight(item.target)}
+                      onMouseLeave={() => setManualSpotlight('none')}
+                      onClick={() =>
+                        setManualSpotlight((prev) =>
+                          prev === item.target ? 'none' : item.target
+                        )
+                      }
+                      className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                        isActive ? item.activeRing : item.box
+                      }`}
+                    >
+                      <span className={`w-3.5 h-3.5 rounded-sm shrink-0 ${item.dot}`} />
+                      <span className="text-slate-800 font-medium">{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
