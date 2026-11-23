@@ -132,6 +132,56 @@ export type VisualDiagram =
     }
   | {
       type: 'final-summary';
+    }
+  | {
+      type: 'english-cards';
+      banner?: string;
+      bannerRole?: 'persona' | 'verbo' | 'tiempo' | 'neg' | 'neutral';
+      layout?: '2col' | '3col' | 'rows';
+      cards: Array<{
+        title: string;
+        subtitle?: string;
+        meaning?: string;
+        extra?: string;
+        speakText?: string;
+        icon?:
+          | 'sun'
+          | 'cloud'
+          | 'rain'
+          | 'wind'
+          | 'storm'
+          | 'snow'
+          | 'tornado'
+          | 'flood'
+          | 'wildfire'
+          | 'volcano'
+          | 'eye'
+          | 'book'
+          | 'sparkles'
+          | 'calendar'
+          | 'clock'
+          | 'check';
+        tone?: 'blue' | 'mint' | 'peach' | 'lilac' | 'slate';
+        role?: 'persona' | 'verbo' | 'tiempo' | 'neg';
+        matchPhrases?: string[];
+      }>;
+      footerTip?: string;
+    }
+  | {
+      type: 'english-quiz';
+      instruction: string;
+      hint: string;
+      items: Array<{
+        id: string;
+        prompt: string;
+        subLabel?: string;
+        icon?: 'sun' | 'cloud' | 'rain' | 'tornado' | 'calendar' | 'clock' | 'book';
+        options: string[];
+        correctOption: string;
+        speakAfter?: string;
+        tone?: 'blue' | 'mint' | 'peach' | 'lilac';
+        matchPhrases?: string[];
+      }>;
     };
 
 export interface LessonScene {
@@ -145,10 +195,22 @@ export interface LessonScene {
   supportPhrase?: string;
 }
 
+export type SubjectId = 'matematica' | 'ingles';
+
+export type VideoId =
+  | 'video-1'
+  | 'video-2'
+  | 'video-3'
+  | 'video-4'
+  | 'english-1'
+  | 'english-2'
+  | 'english-3'
+  | 'english-4';
+
 export interface Chapter {
   id: string;
   number: number;
-  videoGroupId: 'video-1' | 'video-2' | 'video-3' | 'video-4';
+  videoGroupId: VideoId;
   title: string;
   activityRef: string;
   shortDesc: string;
@@ -156,7 +218,8 @@ export interface Chapter {
 }
 
 export interface VideoModule {
-  id: 'video-1' | 'video-2' | 'video-3' | 'video-4';
+  id: VideoId;
+  subject: SubjectId;
   shortLabel: string;
   title: string;
   subtitle: string;

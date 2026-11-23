@@ -1,5 +1,10 @@
 import type { Chapter, LessonScene, PedagogicalPhase } from '../src/types/lesson.ts';
-import { splitNarrationCues, type SpotlightTarget } from '../src/utils/spotlightCues.ts';
+import {
+  doesSpokenTextMatchKeywords,
+  splitNarrationCues,
+  splitSpokenClauses,
+  type SpotlightTarget,
+} from '../src/utils/spotlightCues.ts';
 
 const PHASE_LABELS: Record<PedagogicalPhase, string> = {
   concepto: 'Comprendemos la idea',
@@ -216,7 +221,7 @@ export function buildSceneSvgFrames(
     return frames;
   }
 
-  if (d.type === 'practice-challenge') {
+  if (d.type === 'practice-challenge' || d.type === 'english-quiz') {
     return [
       {
         svg: renderSingleFrame(chapter, scene, { practiceReveal: false }),
@@ -228,6 +233,47 @@ export function buildSceneSvgFrames(
         durationShare: 0.35,
       },
     ];
+  }
+
+  if (d.type === 'english-cards') {
+    const clauses = splitSpokenClauses(scene.narration);
+    const cues = splitNarrationCues(scene.narration);
+    const getMatchKey = (text: string) =>
+      d.cards
+        .map((card, idx) =>
+          doesSpokenTextMatchKeywords(text, card.matchPhrases || [card.title, card.meaning || ''])
+            ? idx
+            : -1
+        )
+        .filter((i) => i >= 0)
+        .join(',');
+
+    const grouped: Array<{ key: string; share: number; text: string; sentIdx: number }> = [];
+    for (const cl of clauses) {
+      const share = cl.endRatio - cl.startRatio;
+      const key = getMatchKey(cl.text);
+      const prev = grouped[grouped.length - 1];
+      if (prev && (prev.key === key || grouped.length >= 9)) {
+        prev.share += share;
+        prev.text = `${prev.text} ${cl.text}`.trim();
+      } else {
+        grouped.push({ key, share, text: cl.text, sentIdx: cl.sentenceIndex });
+      }
+    }
+
+    if (grouped.length > 0) {
+      return grouped.map((seg) => {
+        const cue = cues[seg.sentIdx];
+        return {
+          svg: renderSingleFrame(chapter, scene, {
+            spotlight: cue?.target || 'none',
+            spotlightLabel: '',
+            activeSentence: seg.text,
+          }),
+          durationShare: seg.share,
+        };
+      });
+    }
   }
 
   // Merge consecutive spoken sentences that share the same spotlight target (cap to <= 5 frames per scene)
@@ -358,7 +404,7 @@ function renderSingleFrame(
 
 function renderDiagramSvg(
   scene: LessonScene,
-  opts: { stepsReveal?: number; practiceReveal?: boolean; spotlight: SpotlightTarget }
+  opts: { stepsReveal?: number; practiceReveal?: boolean; spotlight: SpotlightTarget; activeSentence?: string }
 ): string {
   const d = scene.diagram;
   const sp = opts.spotlight;
@@ -877,6 +923,118 @@ function renderDiagramSvg(
         <text x="635" y="504" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="21" font-weight="700" fill="#1E3A8A">
           “No importa cuánto tardes. Lo importante es que cada día comprendas un poquito más. ¡Vos podés!”
         </text>
+      `;
+    }
+
+    case 'english-cards': {
+      const cols = d.layout === '3col' ? 3 : d.layout === 'rows' ? 1 : 2;
+      const startY = d.banner ? 248 : 196;
+      const availH = (d.footerTip ? 488 : 525) - startY;
+      const rows = Math.ceil(d.cards.length / cols);
+      const cardGap = 16;
+      const totalW = 1100;
+      const cardW = Math.floor((totalW - cardGap * (cols - 1)) / cols);
+      const cardH = Math.min(132, Math.floor((availH - cardGap * (rows - 1)) / Math.max(1, rows)));
+
+      const TONE_FILL: Record<string, [string, string]> = {
+        blue: ['#EFF6FF', '#BFDBFE'],
+        mint: ['#ECFDF5', '#A7F3D0'],
+        peach: ['#FFFBEB', '#FDE68A'],
+        lilac: ['#F5F3FF', '#DDD6FE'],
+        slate: ['#F8FAFC', '#CBD5E1'],
+      };
+
+      const bannerSvg = d.banner
+        ? `
+          <rect x="90" y="190" width="1100" height="44" rx="12" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+          <text x="640" y="219" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#0F172A">${esc(d.banner)}</text>
+        `
+        : '';
+
+      const activeText = opts.activeSentence || '';
+      const matchedFlags = d.cards.map((c) =>
+        doesSpokenTextMatchKeywords(activeText, c.matchPhrases || [c.title, c.meaning || ''])
+      );
+      const anyMatched = matchedFlags.some(Boolean);
+
+      const cardsSvg = d.cards
+        .map((c, idx) => {
+          const col = idx % cols;
+          const row = Math.floor(idx / cols);
+          const x = 90 + col * (cardW + cardGap);
+          const y = startY + row * (cardH + cardGap);
+          const isHit = anyMatched && matchedFlags[idx];
+          const [baseFill, baseStroke] = TONE_FILL[c.tone || 'blue'] || TONE_FILL.blue;
+          const fill = isHit ? '#FEF3C7' : baseFill;
+          const stroke = isHit ? '#D97706' : baseStroke;
+          const sw = isHit ? 4 : 2;
+          const opacityAttr = anyMatched && !isHit ? ' opacity="0.62"' : '';
+          const textX = x + 22;
+          const titleY = y + (cardH > 95 ? 36 : 30);
+
+          return `
+            <g${opacityAttr}>
+              <rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+              <text x="${textX}" y="${titleY}" font-family="Noto Sans, sans-serif" font-size="${cardH > 95 ? 24 : 20}" font-weight="700" fill="#0F172A">${esc(c.title)}</text>
+              ${
+                c.subtitle
+                  ? `<text x="${textX}" y="${titleY + 26}" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#1E3A8A">${esc(c.subtitle)}</text>`
+                  : ''
+              }
+              ${
+                c.meaning
+                  ? `<text x="${textX}" y="${titleY + (c.subtitle ? 52 : 28)}" font-family="Noto Sans, sans-serif" font-size="18" font-weight="600" fill="#334155">${esc(c.meaning)}</text>`
+                  : ''
+              }
+            </g>
+          `;
+        })
+        .join('');
+
+      const footerSvg = d.footerTip
+        ? `<text x="640" y="520" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="19" font-weight="700" fill="#047857">${esc(d.footerTip)}</text>`
+        : '';
+
+      return `${bannerSvg}${cardsSvg}${footerSvg}`;
+    }
+
+    case 'english-quiz': {
+      const revealed = Boolean(opts.practiceReveal);
+      const cols = d.items.length >= 6 ? 3 : 2;
+      const rows = Math.ceil(d.items.length / cols);
+      const gap = 16;
+      const cardW = Math.floor((1100 - gap * (cols - 1)) / cols);
+      const cardH = Math.min(138, Math.floor((275 - gap * (rows - 1)) / Math.max(1, rows)));
+
+      const cardsSvg = d.items
+        .map((it, idx) => {
+          const col = idx % cols;
+          const row = Math.floor(idx / cols);
+          const x = 90 + col * (cardW + gap);
+          const y = 235 + row * (cardH + gap);
+          const fill = revealed ? '#ECFDF5' : '#F8FAFC';
+          const stroke = revealed ? '#34D399' : '#CBD5E1';
+          const optsText = revealed ? `✓ ${it.correctOption}` : it.options.join('   /   ');
+
+          return `
+            <rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+            <text x="${x + 22}" y="${y + 40}" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#0F172A">${esc(it.prompt)}</text>
+            ${
+              it.subLabel
+                ? `<text x="${x + 22}" y="${y + 68}" font-family="Noto Sans, sans-serif" font-size="16" fill="#64748B">${esc(it.subLabel)}</text>`
+                : ''
+            }
+            <text x="${x + 22}" y="${y + cardH - 22}" font-family="Noto Sans, sans-serif" font-size="20" font-weight="700" fill="${revealed ? '#047857' : '#1D4ED8'}">${esc(optsText)}</text>
+          `;
+        })
+        .join('');
+
+      return `
+        <text x="90" y="216" font-family="Noto Sans, sans-serif" font-size="20" font-weight="700" fill="${revealed ? '#047857' : '#1D4ED8'}">
+          ${revealed ? 'RESPUESTAS PARA REVISAR JUNTAS' : 'PAUSA PARA PENSAR (10 SEGUNDOS)'}
+        </text>
+        ${cardsSvg}
+        <text x="640" y="530" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="18" fill="#1E3A8A">Pista: ${esc(d.hint)}</text>
       `;
     }
   }

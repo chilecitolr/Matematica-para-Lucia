@@ -14,8 +14,14 @@ import {
   VolumeX,
   X,
 } from 'lucide-react';
-import { ALL_CHAPTERS, VIDEO_MODULES, getChaptersForVideo } from './data/curriculum';
-import type { Chapter, LessonScene, VideoModule } from './types/lesson';
+import {
+  ALL_CHAPTERS,
+  ALL_ENGLISH_CHAPTERS,
+  VIDEO_MODULES,
+  getChaptersForVideo,
+  getVideosForSubject,
+} from './data/curriculum';
+import type { Chapter, LessonScene, SubjectId, VideoId } from './types/lesson';
 import { VideoStage } from './components/VideoStage';
 import { useNarrator } from './hooks/useNarrator';
 import { DownloadCenterModal } from './components/DownloadCenterModal';
@@ -28,7 +34,7 @@ interface FlatSceneItem {
 }
 
 const VIDEO_THEMES: Record<
-  VideoModule['id'],
+  VideoId,
   {
     inactive: string;
     active: string;
@@ -36,68 +42,89 @@ const VIDEO_THEMES: Record<
   }
 > = {
   'video-1': {
-    inactive: 'bg-blue-50/80 text-blue-900 border-blue-200 hover:bg-blue-100',
-    active: 'bg-blue-700 text-white border-blue-700 shadow-sm',
-    dot: 'bg-blue-600',
+    inactive: 'bg-blue-200 text-blue-950 border-2 border-blue-500 hover:bg-blue-300 font-semibold',
+    active: 'bg-blue-700 text-white border-2 border-blue-950 ring-2 ring-blue-300 shadow-md font-bold',
+    dot: 'bg-blue-700',
   },
   'video-2': {
-    inactive: 'bg-orange-50/80 text-orange-900 border-orange-200 hover:bg-orange-100',
-    active: 'bg-orange-700 text-white border-orange-700 shadow-sm',
+    inactive: 'bg-orange-200 text-orange-950 border-2 border-orange-500 hover:bg-orange-300 font-semibold',
+    active: 'bg-orange-600 text-white border-2 border-orange-950 ring-2 ring-orange-300 shadow-md font-bold',
     dot: 'bg-orange-600',
   },
   'video-3': {
-    inactive: 'bg-emerald-50/80 text-emerald-900 border-emerald-200 hover:bg-emerald-100',
-    active: 'bg-emerald-700 text-white border-emerald-700 shadow-sm',
-    dot: 'bg-emerald-600',
+    inactive: 'bg-emerald-200 text-emerald-950 border-2 border-emerald-500 hover:bg-emerald-300 font-semibold',
+    active: 'bg-emerald-700 text-white border-2 border-emerald-950 ring-2 ring-emerald-300 shadow-md font-bold',
+    dot: 'bg-emerald-700',
   },
   'video-4': {
-    inactive: 'bg-indigo-50/80 text-indigo-900 border-indigo-200 hover:bg-indigo-100',
-    active: 'bg-indigo-700 text-white border-indigo-700 shadow-sm',
-    dot: 'bg-indigo-600',
+    inactive: 'bg-indigo-200 text-indigo-950 border-2 border-indigo-500 hover:bg-indigo-300 font-semibold',
+    active: 'bg-indigo-700 text-white border-2 border-indigo-950 ring-2 ring-indigo-300 shadow-md font-bold',
+    dot: 'bg-indigo-700',
+  },
+  'english-1': {
+    inactive: 'bg-emerald-200 text-emerald-950 border-2 border-emerald-500 hover:bg-emerald-300 font-semibold',
+    active: 'bg-emerald-700 text-white border-2 border-emerald-950 ring-2 ring-emerald-300 shadow-md font-bold',
+    dot: 'bg-emerald-700',
+  },
+  'english-2': {
+    inactive: 'bg-sky-200 text-sky-950 border-2 border-sky-500 hover:bg-sky-300 font-semibold',
+    active: 'bg-sky-700 text-white border-2 border-sky-950 ring-2 ring-sky-300 shadow-md font-bold',
+    dot: 'bg-sky-700',
+  },
+  'english-3': {
+    inactive: 'bg-amber-200 text-amber-950 border-2 border-amber-500 hover:bg-amber-300 font-semibold',
+    active: 'bg-amber-600 text-white border-2 border-amber-950 ring-2 ring-amber-300 shadow-md font-bold',
+    dot: 'bg-amber-600',
+  },
+  'english-4': {
+    inactive: 'bg-violet-200 text-violet-950 border-2 border-violet-500 hover:bg-violet-300 font-semibold',
+    active: 'bg-violet-700 text-white border-2 border-violet-950 ring-2 ring-violet-300 shadow-md font-bold',
+    dot: 'bg-violet-700',
   },
 };
 
 const CHAPTER_PALETTE = [
   {
-    card: 'bg-blue-50/45 border-blue-200',
-    kicker: 'text-blue-700',
+    card: 'bg-blue-100/80 border-2 border-blue-400',
+    kicker: 'text-blue-800',
     title: 'text-blue-950',
-    btnInactive: 'bg-white/90 text-slate-700 border-blue-100 hover:bg-blue-50 hover:border-blue-300',
-    btnActive: 'bg-blue-700 text-white border-blue-700 font-semibold shadow-sm',
-    practiceInactive: 'text-amber-700',
+    btnInactive: 'bg-blue-200/85 text-blue-950 border-2 border-blue-400 hover:bg-blue-300 font-medium',
+    btnActive: 'bg-blue-700 text-white border-2 border-blue-950 ring-2 ring-blue-300 font-bold shadow-md',
+    practiceInactive: 'text-amber-800',
     practiceActive: 'text-blue-100',
   },
   {
-    card: 'bg-orange-50/45 border-orange-200',
-    kicker: 'text-orange-700',
+    card: 'bg-orange-100/80 border-2 border-orange-400',
+    kicker: 'text-orange-800',
     title: 'text-orange-950',
-    btnInactive: 'bg-white/90 text-slate-700 border-orange-100 hover:bg-orange-50 hover:border-orange-300',
-    btnActive: 'bg-orange-700 text-white border-orange-700 font-semibold shadow-sm',
-    practiceInactive: 'text-amber-800',
+    btnInactive: 'bg-orange-200/85 text-orange-950 border-2 border-orange-400 hover:bg-orange-300 font-medium',
+    btnActive: 'bg-orange-600 text-white border-2 border-orange-950 ring-2 ring-orange-300 font-bold shadow-md',
+    practiceInactive: 'text-amber-900',
     practiceActive: 'text-orange-100',
   },
   {
-    card: 'bg-emerald-50/45 border-emerald-200',
-    kicker: 'text-emerald-700',
+    card: 'bg-emerald-100/80 border-2 border-emerald-400',
+    kicker: 'text-emerald-800',
     title: 'text-emerald-950',
-    btnInactive: 'bg-white/90 text-slate-700 border-emerald-100 hover:bg-emerald-50 hover:border-emerald-300',
-    btnActive: 'bg-emerald-700 text-white border-emerald-700 font-semibold shadow-sm',
-    practiceInactive: 'text-amber-700',
+    btnInactive: 'bg-emerald-200/85 text-emerald-950 border-2 border-emerald-400 hover:bg-emerald-300 font-medium',
+    btnActive: 'bg-emerald-700 text-white border-2 border-emerald-950 ring-2 ring-emerald-300 font-bold shadow-md',
+    practiceInactive: 'text-amber-800',
     practiceActive: 'text-emerald-100',
   },
   {
-    card: 'bg-indigo-50/45 border-indigo-200',
-    kicker: 'text-indigo-700',
+    card: 'bg-indigo-100/80 border-2 border-indigo-400',
+    kicker: 'text-indigo-800',
     title: 'text-indigo-950',
-    btnInactive: 'bg-white/90 text-slate-700 border-indigo-100 hover:bg-indigo-50 hover:border-indigo-300',
-    btnActive: 'bg-indigo-700 text-white border-indigo-700 font-semibold shadow-sm',
-    practiceInactive: 'text-amber-700',
+    btnInactive: 'bg-indigo-200/85 text-indigo-950 border-2 border-indigo-400 hover:bg-indigo-300 font-medium',
+    btnActive: 'bg-indigo-700 text-white border-2 border-indigo-950 ring-2 ring-indigo-300 font-bold shadow-md',
+    practiceInactive: 'text-amber-800',
     practiceActive: 'text-indigo-100',
   },
 ];
 
 export default function App() {
-  const [activeVideoId, setActiveVideoId] = useState<VideoModule['id']>('video-1');
+  const [subject, setSubject] = useState<SubjectId>('matematica');
+  const [activeVideoId, setActiveVideoId] = useState<VideoId>('video-1');
   const [sceneIndex, setSceneIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -106,17 +133,22 @@ export default function App() {
   const [replayNonce, setReplayNonce] = useState(0);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
-  const [downloadTargetVideoId, setDownloadTargetVideoId] = useState<VideoModule['id'] | null>(null);
+  const [downloadTargetVideoId, setDownloadTargetVideoId] = useState<VideoId | null>(null);
   const [manualSpotlight, setManualSpotlight] = useState<SpotlightTarget>('none');
 
+  const subjectVideos = useMemo(
+    () => getVideosForSubject(subject),
+    [subject]
+  );
+
   const activeVideo = useMemo(
-    () => VIDEO_MODULES.find((v) => v.id === activeVideoId) || VIDEO_MODULES[0],
-    [activeVideoId]
+    () => subjectVideos.find((v) => v.id === activeVideoId) || subjectVideos[0],
+    [subjectVideos, activeVideoId]
   );
 
   const videoChapters = useMemo(
-    () => getChaptersForVideo(activeVideoId),
-    [activeVideoId]
+    () => getChaptersForVideo(activeVideo.id),
+    [activeVideo.id]
   );
 
   const flatScenes = useMemo<FlatSceneItem[]>(() => {
@@ -135,7 +167,15 @@ export default function App() {
   const nextItem = flatScenes[sceneIndex + 1];
   const isPracticeScene = currentItem?.scene.phase === 'practica';
 
-  const handleSelectVideo = (videoId: VideoModule['id']) => {
+  const handleSelectSubject = (nextSubject: SubjectId) => {
+    setIsPlaying(false);
+    setManualSpotlight('none');
+    setSubject(nextSubject);
+    setActiveVideoId(nextSubject === 'ingles' ? 'english-1' : 'video-1');
+    setSceneIndex(0);
+  };
+
+  const handleSelectVideo = (videoId: VideoId) => {
     setIsPlaying(false);
     setActiveVideoId(videoId);
     setSceneIndex(0);
@@ -162,10 +202,11 @@ export default function App() {
 
   const handleJumpToSummary = () => {
     setIsPlaying(false);
-    setActiveVideoId('video-4');
-    const v4Chapters = getChaptersForVideo('video-4');
+    const targetId: VideoId = subject === 'ingles' ? 'english-4' : 'video-4';
+    setActiveVideoId(targetId);
+    const chapters = getChaptersForVideo(targetId);
     let total = 0;
-    for (const ch of v4Chapters) {
+    for (const ch of chapters) {
       total += ch.scenes.length;
     }
     setSceneIndex(Math.max(0, total - 1));
@@ -207,32 +248,46 @@ export default function App() {
     }
   }, [flatScenes.length, sceneIndex]);
 
-  const totalChaptersCount = ALL_CHAPTERS.length;
+  const totalChaptersCount =
+    subject === 'ingles' ? ALL_ENGLISH_CHAPTERS.length : ALL_CHAPTERS.length;
+
+  const pdfHref =
+    subject === 'ingles'
+      ? `${import.meta.env.BASE_URL}assets/aistudio/ingles_paso_a_paso_dislexia_3ro__1__079a2dbc.pdf`
+      : `${import.meta.env.BASE_URL}assets/aistudio/Trabajo_Practico_Integrador_Matematica_3er_ano_monomios_corregidos_2fb32742.pdf`;
+  const pdfTitle =
+    subject === 'ingles'
+      ? 'Inglés Paso a Paso – Guía Visual (3.er año)'
+      : 'Trabajo Práctico Integrador Final – Matemática 3.er año';
+  const pdfDownloadName =
+    subject === 'ingles'
+      ? 'Ingles_Paso_a_Paso_3er_ano.pdf'
+      : 'Trabajo_Practico_Integrador_Matematica_3er_ano.pdf';
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col">
       {/* Strict 3-Zone Top Navigation Bar */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-8">
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-6">
           {/* Zone 1: Single-line Brand Wordmark */}
           <a
             href="#inicio"
             onClick={(e) => {
               e.preventDefault();
-              handleSelectVideo('video-1');
+              handleSelectVideo(subject === 'ingles' ? 'english-1' : 'video-1');
             }}
             className="font-display text-base sm:text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
           >
-            Matemática Paso a Paso
+            {subject === 'ingles' ? 'Inglés Paso a Paso' : 'Matemática Paso a Paso'}
           </a>
 
           {/* Zone 2: 4 concise single-line color-coded nav buttons */}
           <nav
-            aria-label="Videos de la serie"
+            aria-label={subject === 'ingles' ? 'Temas de inglés' : 'Videos de la serie'}
             className="hidden lg:flex items-center gap-2 text-sm font-medium"
           >
-            {VIDEO_MODULES.map((vid) => {
-              const active = vid.id === activeVideoId;
+            {subjectVideos.map((vid) => {
+              const active = vid.id === activeVideo.id;
               const theme = VIDEO_THEMES[vid.id];
               return (
                 <button
@@ -274,29 +329,59 @@ export default function App() {
 
       {/* Main Content Container */}
       <main id="inicio" className="flex-1 max-w-[1440px] w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 md:py-8 space-y-4 sm:space-y-6">
-        {/* Compact Video Selector for mobile/tablet viewports */}
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap lg:hidden items-center gap-2">
-          {VIDEO_MODULES.map((vid) => {
-            const active = vid.id === activeVideoId;
-            const theme = VIDEO_THEMES[vid.id];
-            return (
-              <button
-                key={vid.id}
-                type="button"
-                onClick={() => handleSelectVideo(vid.id)}
-                className={`inline-flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap border cursor-pointer text-center transition-colors ${
-                  active ? `${theme.active} font-semibold` : theme.inactive
-                }`}
-              >
-                <span
-                  className={`w-2 h-2 rounded-sm shrink-0 ${
-                    active ? 'bg-white' : theme.dot
+        {/* Materia Switcher + Mobile Video Selector (kept as div 1 to preserve Focus Mode DOM positions) */}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-1">
+              Materia:
+            </span>
+            <button
+              type="button"
+              onClick={() => handleSelectSubject('matematica')}
+              className={`inline-flex items-center gap-2 px-4 py-2 min-h-[42px] rounded-xl border-2 text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
+                subject === 'matematica'
+                  ? 'bg-blue-800 text-white border-blue-950 ring-2 ring-blue-300 shadow-md'
+                  : 'bg-blue-100 text-blue-950 border-blue-400 hover:bg-blue-200'
+              }`}
+            >
+              <span>Matemática · 3.er año</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectSubject('ingles')}
+              className={`inline-flex items-center gap-2 px-4 py-2 min-h-[42px] rounded-xl border-2 text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
+                subject === 'ingles'
+                  ? 'bg-emerald-700 text-white border-emerald-950 ring-2 ring-emerald-300 shadow-md'
+                  : 'bg-emerald-100 text-emerald-950 border-emerald-400 hover:bg-emerald-200'
+              }`}
+            >
+              <span>Inglés · 3.er año</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap lg:hidden items-center gap-2">
+            {subjectVideos.map((vid) => {
+              const active = vid.id === activeVideo.id;
+              const theme = VIDEO_THEMES[vid.id];
+              return (
+                <button
+                  key={vid.id}
+                  type="button"
+                  onClick={() => handleSelectVideo(vid.id)}
+                  className={`inline-flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap border cursor-pointer text-center transition-colors ${
+                    active ? `${theme.active} font-semibold` : theme.inactive
                   }`}
-                />
-                <span>{vid.shortLabel}</span>
-              </button>
-            );
-          })}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-sm shrink-0 ${
+                      active ? 'bg-white' : theme.dot
+                    }`}
+                  />
+                  <span>{vid.shortLabel}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Cartel de dedicatoria para Lucía */}
@@ -313,9 +398,17 @@ export default function App() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-slate-500">
-              <span>Trabajo Práctico Integrador Final</span>
+              <span>
+                {subject === 'ingles'
+                  ? 'Inglés · Aprendemos de a poquito'
+                  : 'Trabajo Práctico Integrador Final'}
+              </span>
               <span aria-hidden="true">·</span>
-              <span>{totalChaptersCount} capítulos en 4 videos cortos</span>
+              <span>
+                {subject === 'ingles'
+                  ? `${totalChaptersCount} temas visuales sin apuro`
+                  : `${totalChaptersCount} capítulos en 4 videos cortos`}
+              </span>
             </div>
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">
               {activeVideo.shortLabel}: {activeVideo.title}
@@ -329,7 +422,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => {
-                setDownloadTargetVideoId(activeVideoId);
+                setDownloadTargetVideoId(activeVideo.id);
                 setDownloadModalOpen(true);
               }}
               className="inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 min-h-[44px] rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-medium whitespace-nowrap shrink-0 cursor-pointer flex-1 sm:flex-initial"
@@ -351,7 +444,7 @@ export default function App() {
               className="inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 min-h-[44px] rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs sm:text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
             >
               <FileText className="w-4 h-4 text-blue-700" />
-              <span>Ver TP original (PDF)</span>
+              <span>{subject === 'ingles' ? 'Ver guía Inglés (PDF)' : 'Ver TP original (PDF)'}</span>
             </button>
           </div>
         </div>
@@ -363,6 +456,7 @@ export default function App() {
             {currentItem && (
               <VideoStage
                 scene={currentItem.scene}
+                subject={subject}
                 chapterTitle={currentItem.chapter.title}
                 chapterNumber={currentItem.chapter.number}
                 activityRef={currentItem.chapter.activityRef}
@@ -428,7 +522,7 @@ export default function App() {
                       if (!isPlaying) unlockAudio();
                       setIsPlaying((p) => !p);
                     }}
-                    className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                    className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] rounded-xl border-2 border-blue-900 bg-blue-700 hover:bg-blue-800 text-white text-sm font-bold shadow-sm transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
                     {isPlaying ? (
                       <>
@@ -447,7 +541,7 @@ export default function App() {
                     type="button"
                     onClick={handlePrevScene}
                     disabled={sceneIndex === 0}
-                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl border-2 border-indigo-800 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-sm font-bold text-white shadow-sm whitespace-nowrap shrink-0 cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     <span>Anterior</span>
@@ -457,7 +551,7 @@ export default function App() {
                     type="button"
                     onClick={handleNextScene}
                     disabled={sceneIndex >= flatScenes.length - 1}
-                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer sm:order-4"
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl border-2 border-emerald-800 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-sm font-bold text-white shadow-sm whitespace-nowrap shrink-0 cursor-pointer sm:order-4"
                   >
                     <span>Siguiente</span>
                     <ChevronRight className="w-4 h-4" />
@@ -469,7 +563,7 @@ export default function App() {
                       unlockAudio();
                       handleRepeatScene();
                     }}
-                    className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 whitespace-nowrap shrink-0 cursor-pointer sm:order-3"
+                    className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl border-2 border-amber-800 bg-amber-600 hover:bg-amber-700 text-sm font-bold text-white shadow-sm whitespace-nowrap shrink-0 cursor-pointer sm:order-3"
                   >
                     <RotateCcw className="w-4 h-4" />
                     <span>Volver a mirar</span>
@@ -554,28 +648,28 @@ export default function App() {
                   [
                     {
                       target: 'num' as const,
-                      label: 'Números',
+                      label: subject === 'ingles' ? 'Persona' : 'Números',
                       box: 'bg-blue-50/70 border-blue-200 hover:border-blue-400',
                       activeRing: 'ring-2 ring-blue-500 bg-blue-100',
                       dot: 'bg-blue-700',
                     },
                     {
                       target: 'var' as const,
-                      label: 'Letras',
+                      label: subject === 'ingles' ? 'Verbo / Palabra' : 'Letras',
                       box: 'bg-emerald-50/70 border-emerald-200 hover:border-emerald-400',
                       activeRing: 'ring-2 ring-emerald-500 bg-emerald-100',
                       dot: 'bg-emerald-700',
                     },
                     {
                       target: 'exp' as const,
-                      label: 'Exponentes',
+                      label: subject === 'ingles' ? 'Tiempo / DID' : 'Exponentes',
                       box: 'bg-orange-50/70 border-orange-200 hover:border-orange-400',
                       activeRing: 'ring-2 ring-orange-500 bg-orange-100',
                       dot: 'bg-orange-600',
                     },
                     {
                       target: 'neg' as const,
-                      label: 'Signos (−)',
+                      label: subject === 'ingles' ? 'NOT / N’T' : 'Signos (−)',
                       box: 'bg-red-50/70 border-red-200 hover:border-red-400',
                       activeRing: 'ring-2 ring-red-500 bg-red-100',
                       dot: 'bg-red-600',
@@ -614,7 +708,7 @@ export default function App() {
             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-display text-base font-bold text-slate-900">
-                  Capítulos de este video
+                  {subject === 'ingles' ? 'Escenas de este tema' : 'Capítulos de este video'}
                 </h2>
                 <BookOpen className="w-4 h-4 text-slate-400" />
               </div>
@@ -632,7 +726,7 @@ export default function App() {
                     >
                       <div>
                         <div className={`text-xs font-semibold ${pal.kicker}`}>
-                          Capítulo {chapter.number} · {chapter.activityRef}
+                          {subject === 'ingles' ? 'Tema' : 'Capítulo'} {chapter.number} · {chapter.activityRef}
                         </div>
                         <div className={`font-display font-bold text-sm ${pal.title}`}>
                           {chapter.title}
@@ -691,17 +785,17 @@ export default function App() {
           className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3 sm:p-6 md:p-8"
           role="dialog"
           aria-modal="true"
-          aria-label="Trabajo Práctico Integrador Final en PDF"
+          aria-label={pdfTitle}
         >
           <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200">
               <div className="font-display text-sm sm:text-base font-bold text-slate-900">
-                Trabajo Práctico Integrador Final – Matemática 3.er año
+                {pdfTitle}
               </div>
               <div className="flex items-center gap-2">
                 <a
-                  href={`${import.meta.env.BASE_URL}assets/aistudio/Trabajo_Practico_Integrador_Matematica_3er_ano_monomios_corregidos_2fb32742.pdf`}
-                  download="Trabajo_Practico_Integrador_Matematica_3er_ano.pdf"
+                  href={pdfHref}
+                  download={pdfDownloadName}
                   className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs sm:text-sm font-semibold whitespace-nowrap"
                 >
                   <Download className="w-4 h-4" />
@@ -718,8 +812,8 @@ export default function App() {
               </div>
             </div>
             <iframe
-              src={`${import.meta.env.BASE_URL}assets/aistudio/Trabajo_Practico_Integrador_Matematica_3er_ano_monomios_corregidos_2fb32742.pdf`}
-              title="PDF del Trabajo Práctico Integrador Final"
+              src={pdfHref}
+              title={pdfTitle}
               className="flex-1 w-full bg-slate-100"
             />
           </div>
@@ -728,6 +822,7 @@ export default function App() {
 
       <DownloadCenterModal
         open={downloadModalOpen}
+        subject={subject}
         initialVideoId={downloadTargetVideoId}
         onClose={() => setDownloadModalOpen(false)}
       />

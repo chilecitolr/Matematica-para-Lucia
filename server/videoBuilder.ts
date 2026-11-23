@@ -36,6 +36,10 @@ const FILE_NAMES: Record<VideoModule['id'], string> = {
   'video-2': 'Video_2_Potencias_y_Raices_3er_Ano.mp4',
   'video-3': 'Video_3_Monomios_3er_Ano.mp4',
   'video-4': 'Video_4_Multiplicacion_Division_Integracion_3er_Ano.mp4',
+  'english-1': 'Ingles_1_Clima_y_Desastres_3er_Ano.mp4',
+  'english-2': 'Ingles_2_Was_y_Were_3er_Ano.mp4',
+  'english-3': 'Ingles_3_Past_Simple_3er_Ano.mp4',
+  'english-4': 'Ingles_4_In_On_At_y_Repaso_3er_Ano.mp4',
 };
 
 const activeJobs = new Map<VideoModule['id'], Promise<string>>();

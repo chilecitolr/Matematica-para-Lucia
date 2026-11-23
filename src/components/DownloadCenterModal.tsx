@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, Download, Film, Loader2, X } from 'lucide-react';
 import { VIDEO_MODULES } from '../data/curriculum';
-import type { VideoModule } from '../types/lesson';
+import type { SubjectId, VideoId, VideoModule } from '../types/lesson';
 
 export interface VideoStatusItem {
-  videoId: VideoModule['id'];
+  videoId: VideoId;
   filename: string;
   status: 'idle' | 'building' | 'ready' | 'error';
   progress: number;
@@ -15,7 +15,8 @@ export interface VideoStatusItem {
 
 interface DownloadCenterModalProps {
   open: boolean;
-  initialVideoId?: VideoModule['id'] | null;
+  subject?: SubjectId;
+  initialVideoId?: VideoId | null;
   onClose: () => void;
 }
 
@@ -36,12 +37,20 @@ function triggerFileDownload(videoId: string, filename: string) {
 
 export const DownloadCenterModal: React.FC<DownloadCenterModalProps> = ({
   open,
+  subject = 'matematica',
   initialVideoId,
   onClose,
 }) => {
+  const [modalSubject, setModalSubject] = useState<SubjectId>(subject);
   const [statuses, setStatuses] = useState<Record<string, VideoStatusItem>>({});
   const [autoStartedId, setAutoStartedId] = useState<string | null>(null);
   const [serverUnavailable, setServerUnavailable] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setModalSubject(initialVideoId?.startsWith('english-') ? 'ingles' : subject);
+    }
+  }, [open, subject, initialVideoId]);
 
   const fetchAll = async () => {
     try {
@@ -196,7 +205,32 @@ export const DownloadCenterModal: React.FC<DownloadCenterModalProps> = ({
             </div>
           )}
 
-          {VIDEO_MODULES.map((mod) => {
+          <div className="flex items-center gap-2 pb-1">
+            <button
+              type="button"
+              onClick={() => setModalSubject('matematica')}
+              className={`px-3.5 py-2 min-h-[40px] rounded-lg text-xs sm:text-sm font-semibold border cursor-pointer transition-colors ${
+                modalSubject === 'matematica'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              Matemática (4 videos)
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalSubject('ingles')}
+              className={`px-3.5 py-2 min-h-[40px] rounded-lg text-xs sm:text-sm font-semibold border cursor-pointer transition-colors ${
+                modalSubject === 'ingles'
+                  ? 'bg-emerald-700 text-white border-emerald-700'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              Inglés (4 bloques)
+            </button>
+          </div>
+
+          {VIDEO_MODULES.filter((m) => m.subject === modalSubject).map((mod) => {
             const st = statuses[mod.id];
             const isBuilding = st?.status === 'building';
             const isReady = st?.status === 'ready';

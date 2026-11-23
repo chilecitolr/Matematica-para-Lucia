@@ -2,19 +2,36 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowRight,
+  BookOpen,
+  Calendar,
   Check,
   Clock,
+  Cloud,
+  CloudLightning,
+  CloudRain,
+  Eye,
+  Flame,
   HelpCircle,
+  Mountain,
   Pause,
   RotateCcw,
+  Snowflake,
   Sparkles,
+  Sun,
+  Tornado,
+  Volume2,
+  Waves,
+  Wind,
 } from 'lucide-react';
-import type { LessonScene, PedagogicalPhase } from '../types/lesson';
+import type { LessonScene, PedagogicalPhase, SubjectId } from '../types/lesson';
 import { ColorMath, FractionBox } from './ColorMath';
 import { playSoftFeedbackTone } from '../hooks/useNarrator';
 import {
+  doesSpokenTextMatchKeywords,
+  getActiveClauseAtProgress,
   getActiveCueAtProgress,
   splitNarrationCues,
+  splitSpokenClauses,
   type SpotlightTarget,
 } from '../utils/spotlightCues';
 
@@ -33,6 +50,7 @@ const PHASE_LABELS: Record<PedagogicalPhase, string> = {
 
 interface VideoStageProps {
   scene: LessonScene;
+  subject?: SubjectId;
   chapterTitle: string;
   chapterNumber: number;
   activityRef: string;
@@ -44,6 +62,7 @@ interface VideoStageProps {
 
 export const VideoStage: React.FC<VideoStageProps> = ({
   scene,
+  subject = 'matematica',
   chapterTitle,
   chapterNumber,
   activityRef,
@@ -53,34 +72,66 @@ export const VideoStage: React.FC<VideoStageProps> = ({
   showSubtitles,
 }) => {
   const cues = useMemo(() => splitNarrationCues(scene.narration), [scene.narration]);
-  const { index: activeCueIdx, cue: activeCue } = useMemo(
+  const clauses = useMemo(() => splitSpokenClauses(scene.narration), [scene.narration]);
+  const { cue: activeCue } = useMemo(
     () => getActiveCueAtProgress(cues, narrationProgress),
     [cues, narrationProgress]
   );
+  const { index: activeClauseIdx, clause: activeClause } = useMemo(
+    () => getActiveClauseAtProgress(clauses, narrationProgress),
+    [clauses, narrationProgress]
+  );
+
+  const isNarratingOrProgressed = isPlaying || narrationProgress > 0;
+  const activeSpokenText = isNarratingOrProgressed ? activeClause.text : '';
 
   const activeTarget: SpotlightTarget =
     manualSpotlight !== 'none'
       ? manualSpotlight
-      : isPlaying || narrationProgress > 0
+      : isNarratingOrProgressed
         ? activeCue.target
         : 'none';
 
+  const getTargetLabel = (t: SpotlightTarget): string => {
+    if (subject === 'ingles') {
+      return (
+        {
+          num: 'Señalando: Persona / Sujeto (Azul)',
+          var: 'Señalando: Verbo / Palabra clave (Verde)',
+          exp: 'Señalando: Tiempo / -ED / DID (Naranja)',
+          neg: 'Señalando: Negación NOT / N’T (Rojo)',
+          numerador: '',
+          denominador: '',
+          flip: '',
+          base: '',
+          area: '',
+          none: '',
+        }[t] || ''
+      );
+    }
+    return (
+      {
+        num: 'Señalando: Números / Coeficientes (Azul)',
+        var: 'Señalando: Letras / Parte literal (Verde)',
+        exp: 'Señalando: Exponentes / Grado (Naranja)',
+        neg: 'Señalando: Signos negativos (Rojo)',
+        numerador: 'Señalando: Numerador',
+        denominador: 'Señalando: Denominador',
+        flip: 'Señalando: Fracción invertida',
+        base: 'Señalando: Base',
+        area: 'Señalando: Área',
+        none: '',
+      }[t] || ''
+    );
+  };
+
   const activeLabel =
     manualSpotlight !== 'none'
-      ? ({
-          num: 'Señalando: Números / Coeficientes (Azul)',
-          var: 'Señalando: Letras / Parte literal (Verde)',
-          exp: 'Señalando: Exponentes / Grado (Naranja)',
-          neg: 'Señalando: Signos negativos (Rojo)',
-          numerador: 'Señalando: Numerador',
-          denominador: 'Señalando: Denominador',
-          flip: 'Señalando: Fracción invertida',
-          base: 'Señalando: Base',
-          area: 'Señalando: Área',
-          none: '',
-        }[manualSpotlight] || '')
+      ? getTargetLabel(manualSpotlight)
       : activeTarget !== 'none'
-        ? activeCue.label
+        ? subject === 'ingles'
+          ? getTargetLabel(activeTarget) || activeCue.label
+          : activeCue.label
         : '';
 
   return (
@@ -89,7 +140,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 bg-slate-50/70">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-slate-600">
           <span className="font-semibold text-slate-900">
-            Capítulo {chapterNumber}. {chapterTitle}
+            {subject === 'ingles' ? 'Tema' : 'Capítulo'} {chapterNumber}. {chapterTitle}
           </span>
           <span aria-hidden="true">·</span>
           <span>{activityRef}</span>
@@ -129,7 +180,12 @@ export const VideoStage: React.FC<VideoStageProps> = ({
 
             {/* Central Visual Diagram Area */}
             <div className="flex-1 flex items-center justify-center py-1 sm:py-2">
-              <DiagramRenderer scene={scene} highlightTarget={activeTarget} />
+              <DiagramRenderer
+                scene={scene}
+                highlightTarget={activeTarget}
+                activeSpokenText={activeSpokenText}
+                hasManualSpotlight={manualSpotlight !== 'none'}
+              />
             </div>
 
             {/* Supportive Reassurance Line */}
@@ -143,24 +199,24 @@ export const VideoStage: React.FC<VideoStageProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Calm High-Contrast Subtitle Strip with Live Sentence Tracking */}
+      {/* Calm High-Contrast Subtitle Strip with Live Clause Tracking */}
       {showSubtitles && (
         <div className="px-4 py-3 sm:px-6 sm:py-4 bg-slate-900 text-slate-50 border-t border-slate-800">
           <p className="text-sm sm:text-base md:text-[17px] leading-relaxed text-center max-w-4xl mx-auto tracking-wide">
-            {cues.map((cue, idx) => {
-              const isActive = (isPlaying || narrationProgress > 0) && idx === activeCueIdx;
+            {clauses.map((clause, idx) => {
+              const isActive = isNarratingOrProgressed && idx === activeClauseIdx;
               return (
                 <span
                   key={idx}
-                  className={`transition-opacity duration-200 ${
-                    isPlaying || narrationProgress > 0
+                  className={`transition-all duration-200 ${
+                    isNarratingOrProgressed
                       ? isActive
-                        ? 'text-white font-semibold opacity-100 underline decoration-blue-400 decoration-2 underline-offset-4'
+                        ? 'bg-amber-300 text-slate-950 font-bold px-1.5 py-0.5 rounded mx-0.5'
                         : 'text-slate-300 opacity-65'
                       : 'text-slate-100 opacity-100'
                   }`}
                 >
-                  {cue.text}{' '}
+                  {clause.text}{' '}
                 </span>
               );
             })}
@@ -174,7 +230,9 @@ export const VideoStage: React.FC<VideoStageProps> = ({
 const DiagramRenderer: React.FC<{
   scene: LessonScene;
   highlightTarget: SpotlightTarget;
-}> = ({ scene, highlightTarget }) => {
+  activeSpokenText: string;
+  hasManualSpotlight: boolean;
+}> = ({ scene, highlightTarget, activeSpokenText, hasManualSpotlight }) => {
   const { diagram } = scene;
 
   switch (diagram.type) {
@@ -1264,6 +1322,28 @@ const DiagramRenderer: React.FC<{
         </div>
       );
     }
+
+    case 'english-cards': {
+      return (
+        <EnglishCardsView
+          diagram={diagram}
+          highlightTarget={highlightTarget}
+          activeSpokenText={activeSpokenText}
+          hasManualSpotlight={hasManualSpotlight}
+        />
+      );
+    }
+
+    case 'english-quiz': {
+      return (
+        <EnglishQuizView
+          key={scene.id}
+          sceneId={scene.id}
+          diagram={diagram}
+          activeSpokenText={activeSpokenText}
+        />
+      );
+    }
   }
 };
 
@@ -1436,6 +1516,423 @@ const PracticeChallengeView: React.FC<{
               {st}
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+function speakEnglishPhrase(phrase: string) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(phrase);
+    const voices = window.speechSynthesis.getVoices();
+    const enFemale = voices.find(
+      (v) =>
+        v.lang.toLowerCase().startsWith('en') &&
+        /samantha|karen|victoria|serena|aria|jenny|zira|google us english|female/i.test(v.name)
+    );
+    const enAny = voices.find((v) => v.lang.toLowerCase().startsWith('en'));
+    if (enFemale || enAny) u.voice = (enFemale || enAny)!;
+    u.lang = (enFemale || enAny)?.lang || 'en-US';
+    u.rate = 0.85;
+    u.pitch = 1.02;
+    window.speechSynthesis.speak(u);
+  } catch {
+    // Ignore speech synthesis errors
+  }
+}
+
+const EnglishIcon: React.FC<{ name?: string; className?: string }> = ({
+  name,
+  className = 'w-6 h-6 text-slate-800',
+}) => {
+  switch (name) {
+    case 'sun':
+      return <Sun className={className} />;
+    case 'cloud':
+      return <Cloud className={className} />;
+    case 'rain':
+      return <CloudRain className={className} />;
+    case 'wind':
+      return <Wind className={className} />;
+    case 'storm':
+      return <CloudLightning className={className} />;
+    case 'snow':
+      return <Snowflake className={className} />;
+    case 'tornado':
+      return <Tornado className={className} />;
+    case 'flood':
+      return <Waves className={className} />;
+    case 'wildfire':
+      return <Flame className={className} />;
+    case 'volcano':
+      return <Mountain className={className} />;
+    case 'eye':
+      return <Eye className={className} />;
+    case 'book':
+      return <BookOpen className={className} />;
+    case 'calendar':
+      return <Calendar className={className} />;
+    case 'clock':
+      return <Clock className={className} />;
+    case 'check':
+      return <Check className={className} />;
+    case 'sparkles':
+      return <Sparkles className={className} />;
+    default:
+      return null;
+  }
+};
+
+const TONE_BOX: Record<string, string> = {
+  blue: 'bg-sky-50/90 border-sky-200',
+  mint: 'bg-emerald-50/85 border-emerald-200',
+  peach: 'bg-amber-50/90 border-amber-200',
+  lilac: 'bg-violet-50/85 border-violet-200',
+  slate: 'bg-slate-50 border-slate-200',
+};
+
+function matchesEnglishRole(
+  role: 'persona' | 'verbo' | 'tiempo' | 'neg' | undefined,
+  target: SpotlightTarget
+): boolean {
+  if (!role || target === 'none') return false;
+  if (role === 'persona' && target === 'num') return true;
+  if (role === 'verbo' && target === 'var') return true;
+  if (role === 'tiempo' && target === 'exp') return true;
+  if (role === 'neg' && target === 'neg') return true;
+  return false;
+}
+
+const EnglishCardsView: React.FC<{
+  diagram: Extract<LessonScene['diagram'], { type: 'english-cards' }>;
+  highlightTarget: SpotlightTarget;
+  activeSpokenText: string;
+  hasManualSpotlight: boolean;
+}> = ({ diagram, highlightTarget, activeSpokenText, hasManualSpotlight }) => {
+  const gridClass =
+    diagram.layout === '3col'
+      ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
+      : diagram.layout === 'rows'
+        ? 'grid-cols-1'
+        : 'grid-cols-1 sm:grid-cols-2';
+
+  const cardSpokenMatches = useMemo(
+    () =>
+      diagram.cards.map((card) =>
+        doesSpokenTextMatchKeywords(
+          activeSpokenText,
+          card.matchPhrases || [card.title, card.meaning || '']
+        )
+      ),
+    [diagram.cards, activeSpokenText]
+  );
+
+  const anySpokenMatched = !hasManualSpotlight && cardSpokenMatches.some(Boolean);
+
+  const bannerMatched =
+    diagram.bannerRole &&
+    diagram.bannerRole !== 'neutral' &&
+    hasManualSpotlight &&
+    matchesEnglishRole(diagram.bannerRole, highlightTarget);
+
+  return (
+    <div className="w-full max-w-3xl space-y-4">
+      {diagram.banner && (
+        <div
+          className={`px-4 py-3 rounded-xl border text-center font-display text-base sm:text-lg md:text-xl font-bold tracking-wide transition-transform ${
+            bannerMatched
+              ? 'bg-blue-100 border-blue-500 text-slate-900 scale-[1.02] shadow-sm'
+              : 'bg-sky-50 border-sky-200 text-slate-900'
+          }`}
+        >
+          {diagram.banner}
+        </div>
+      )}
+
+      <div className={`grid gap-3 ${gridClass}`}>
+        {diagram.cards.map((card, idx) => {
+          const toneStyle = TONE_BOX[card.tone || 'blue'] || TONE_BOX.blue;
+          const spokenHit = anySpokenMatched && cardSpokenMatches[idx];
+          const roleHit = hasManualSpotlight && matchesEnglishRole(card.role, highlightTarget);
+          const highlighted = spokenHit || roleHit;
+
+          return (
+            <div
+              key={`${card.title}-${idx}`}
+              className={`rounded-2xl border p-4 sm:p-5 flex flex-col justify-between gap-2 transition-all duration-300 ${
+                spokenHit
+                  ? 'bg-amber-100/95 border-amber-500 ring-4 ring-amber-400 scale-[1.04] shadow-md opacity-100'
+                  : roleHit
+                    ? `${toneStyle} ring-2 ring-blue-600 scale-[1.03] shadow-sm opacity-100`
+                    : anySpokenMatched
+                      ? `${toneStyle} opacity-55`
+                      : toneStyle
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  {card.icon && (
+                    <span
+                      className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
+                        spokenHit
+                          ? 'bg-amber-50 border-amber-400'
+                          : 'bg-white/90 border-slate-200'
+                      }`}
+                    >
+                      <EnglishIcon name={card.icon} className="w-5 h-5 text-slate-800" />
+                    </span>
+                  )}
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="font-display text-base sm:text-lg font-bold text-slate-900 tracking-wide break-words">
+                      {card.title}
+                    </div>
+                    {card.subtitle && (
+                      <div className="text-sm sm:text-base font-semibold text-blue-900">
+                        {card.subtitle}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {card.speakText && (
+                  <button
+                    type="button"
+                    onClick={() => speakEnglishPhrase(card.speakText!)}
+                    title={`Escuchar en inglés: ${card.speakText}`}
+                    aria-label={`Escuchar en inglés: ${card.speakText}`}
+                    className="min-w-[40px] min-h-[40px] px-2.5 py-1.5 rounded-lg bg-white hover:bg-blue-50 border border-slate-200 text-blue-800 inline-flex items-center justify-center gap-1 text-xs font-semibold shrink-0 cursor-pointer"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Oír</span>
+                  </button>
+                )}
+              </div>
+
+              {card.meaning && (
+                <div className="text-sm sm:text-base text-slate-800 font-medium leading-snug">
+                  {card.meaning}
+                </div>
+              )}
+              {card.extra && (
+                <div className="text-xs sm:text-sm font-medium text-emerald-800 pt-0.5">
+                  {card.extra}
+                </div>
+              )}
+              {highlighted && spokenHit && (
+                <div className="text-[11px] font-bold uppercase tracking-wider text-amber-900 pt-0.5">
+                  Escuchando ahora
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {diagram.footerTip && (
+        <div className="text-center text-xs sm:text-sm font-semibold text-emerald-800 pt-1">
+          {diagram.footerTip}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const EnglishQuizView: React.FC<{
+  sceneId: string;
+  diagram: Extract<LessonScene['diagram'], { type: 'english-quiz' }>;
+  activeSpokenText: string;
+}> = ({ sceneId, diagram, activeSpokenText }) => {
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [showHint, setShowHint] = useState(false);
+  const [showAllAnswers, setShowAllAnswers] = useState(false);
+
+  useEffect(() => {
+    setAnswers({});
+    setShowHint(false);
+    setShowAllAnswers(false);
+  }, [sceneId]);
+
+  const itemSpokenMatches = useMemo(
+    () =>
+      diagram.items.map((item) =>
+        doesSpokenTextMatchKeywords(
+          activeSpokenText,
+          item.matchPhrases || [item.prompt]
+        )
+      ),
+    [diagram.items, activeSpokenText]
+  );
+
+  const anySpokenMatched = itemSpokenMatches.some(Boolean);
+
+  const handleChoose = (
+    item: Extract<LessonScene['diagram'], { type: 'english-quiz' }>['items'][number],
+    option: string
+  ) => {
+    setAnswers((prev) => ({ ...prev, [item.id]: option }));
+    if (option === item.correctOption) {
+      playSoftFeedbackTone('success');
+    } else {
+      playSoftFeedbackTone('gentle');
+    }
+  };
+
+  const correctCount = diagram.items.filter(
+    (it) => answers[it.id] === it.correctOption
+  ).length;
+
+  return (
+    <div className="w-full max-w-3xl space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm sm:text-base font-medium text-slate-800">
+          {diagram.instruction}
+        </p>
+        <span className="text-xs sm:text-sm font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
+          Completadas: {correctCount} de {diagram.items.length}
+        </span>
+      </div>
+
+      <div
+        className={`grid gap-3 ${
+          diagram.items.length >= 6
+            ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
+            : 'grid-cols-1 sm:grid-cols-2'
+        }`}
+      >
+        {diagram.items.map((item, idx) => {
+          const chosen = answers[item.id];
+          const isSolved = showAllAnswers || chosen === item.correctOption;
+          const isWrong = !showAllAnswers && chosen && chosen !== item.correctOption;
+          const toneStyle = TONE_BOX[item.tone || 'blue'] || TONE_BOX.blue;
+          const spokenHit = anySpokenMatched && itemSpokenMatches[idx];
+
+          return (
+            <div
+              key={item.id}
+              className={`rounded-2xl border p-4 space-y-3 transition-all duration-300 ${
+                spokenHit
+                  ? 'bg-amber-100/95 border-amber-500 ring-4 ring-amber-400 scale-[1.04] shadow-md opacity-100'
+                  : isSolved
+                    ? `bg-emerald-50/90 border-emerald-400 ${anySpokenMatched ? 'opacity-65' : ''}`
+                    : `${toneStyle} ${anySpokenMatched ? 'opacity-60' : ''}`
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {item.icon && (
+                    <span
+                      className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${
+                        spokenHit ? 'bg-amber-50 border-amber-400' : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      <EnglishIcon name={item.icon} className="w-4 h-4 text-slate-800" />
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <div className="font-display text-base sm:text-lg font-bold text-slate-900">
+                      {item.prompt}
+                    </div>
+                    {item.subLabel && (
+                      <div className="text-xs font-medium text-slate-600">
+                        {item.subLabel}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {isSolved && item.speakAfter && (
+                  <button
+                    type="button"
+                    onClick={() => speakEnglishPhrase(item.speakAfter!)}
+                    aria-label={`Escuchar frase: ${item.speakAfter}`}
+                    className="min-w-[36px] min-h-[36px] rounded-lg bg-white border border-emerald-300 text-emerald-800 flex items-center justify-center shrink-0 cursor-pointer"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {item.options.map((opt) => {
+                  const activeCorrect =
+                    (showAllAnswers || chosen === opt) && opt === item.correctOption;
+                  const activeWrong = !showAllAnswers && chosen === opt && opt !== item.correctOption;
+
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => handleChoose(item, opt)}
+                      className={`flex-1 min-w-[76px] min-h-[44px] px-3 py-2 rounded-xl border-2 text-sm sm:text-base font-bold transition-colors cursor-pointer ${
+                        activeCorrect
+                          ? 'bg-emerald-700 border-emerald-700 text-white'
+                          : activeWrong
+                            ? 'bg-red-50 border-red-400 text-red-900'
+                            : 'bg-white border-slate-200 hover:border-blue-400 text-slate-900'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isWrong && (
+                <div className="text-xs font-medium text-amber-900">
+                  Casi. Mirá la pista y probá la otra opción.
+                </div>
+              )}
+              {isSolved && (
+                <div className="text-xs font-semibold text-emerald-800 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                  <span>¡Correcto! {item.correctOption}</span>
+                </div>
+              )}
+              {spokenHit && (
+                <div className="text-[11px] font-bold uppercase tracking-wider text-amber-900">
+                  Escuchando ahora
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => setShowHint((h) => !h)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 cursor-pointer"
+        >
+          <HelpCircle className="w-4 h-4 text-blue-600" />
+          <span>{showHint ? 'Ocultar pista' : 'Ver una pista'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowAllAnswers((s) => !s)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium cursor-pointer"
+        >
+          {showAllAnswers ? (
+            <>
+              <RotateCcw className="w-4 h-4" />
+              <span>Seguir practicando</span>
+            </>
+          ) : (
+            <>
+              <Check className="w-4 h-4" />
+              <span>Revisar juntas</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {showHint && (
+        <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-sm text-blue-950">
+          <strong>Pista:</strong> {diagram.hint}
         </div>
       )}
     </div>

@@ -23,6 +23,10 @@ const VALID_VIDEO_IDS = new Set<VideoModule['id']>([
   'video-2',
   'video-3',
   'video-4',
+  'english-1',
+  'english-2',
+  'english-3',
+  'english-4',
 ]);
 
 app.get('/api/health', (_req, res) => {
