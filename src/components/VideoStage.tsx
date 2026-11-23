@@ -387,21 +387,22 @@ const DiagramRenderer: React.FC<{
 
           <div className="space-y-3 bg-slate-50 p-5 rounded-xl border border-slate-200">
             <div className="flex items-center gap-4">
-              <span className="font-math text-sm font-semibold text-blue-700 w-14">
-                {diagram.leftNum}/{diagram.den}
-              </span>
+              <div className="w-16 flex justify-center shrink-0">
+                <ColorMath expr={`${diagram.leftNum}/${diagram.den}`} size="sm" highlightTarget={highlightTarget} />
+              </div>
               {renderBar(diagram.leftNum, diagram.den, 'bg-blue-500')}
             </div>
             <div className="flex items-center gap-4">
-              <span className="font-math text-sm font-semibold text-blue-700 w-14">
-                {diagram.rightNum}/{diagram.den}
-              </span>
+              <div className="w-16 flex justify-center shrink-0">
+                <ColorMath expr={`${diagram.rightNum}/${diagram.den}`} size="sm" highlightTarget={highlightTarget} />
+              </div>
               {renderBar(diagram.rightNum, diagram.den, 'bg-sky-400')}
             </div>
             <div className="flex items-center gap-4 pt-2 border-t border-slate-200">
-              <span className="font-math text-sm font-bold text-blue-800 w-14">
-                Total {resultNum}/{diagram.den}
-              </span>
+              <div className="w-16 flex items-center justify-center gap-1 shrink-0 text-xs font-bold text-blue-800">
+                <span>Total</span>
+                <ColorMath expr={`${resultNum}/${diagram.den}`} size="sm" highlightTarget={highlightTarget} />
+              </div>
               <div
                 className="grid gap-1 w-full"
                 style={{ gridTemplateColumns: `repeat(${diagram.den}, minmax(0, 1fr))` }}
@@ -1247,7 +1248,7 @@ const DiagramRenderer: React.FC<{
                   : 'bg-slate-50/70 border-slate-200'
               }`}
             >
-              <div className="flex flex-wrap items-baseline gap-2 sm:gap-3 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                 {line.label && (
                   <span className="font-semibold text-xs sm:text-sm text-slate-700 min-w-[2.4rem] sm:min-w-[3.2rem] shrink-0">
                     {line.label}
@@ -1512,8 +1513,8 @@ const PracticeChallengeView: React.FC<{
             Solución paso a paso
           </div>
           {diagram.solutionSteps.map((st, idx) => (
-            <div key={idx} className="text-sm md:text-base text-slate-800">
-              {st}
+            <div key={idx} className="text-sm md:text-base text-slate-800 flex flex-wrap items-center gap-x-1">
+              {renderProseWithFractions(st)}
             </div>
           ))}
         </div>
@@ -1521,6 +1522,31 @@ const PracticeChallengeView: React.FC<{
     </div>
   );
 };
+
+function renderProseWithFractions(text: string): React.ReactNode {
+  const parts = text.split(/([+-]?\d+\/\d+)/g);
+  return parts.map((part, idx) => {
+    const m = /^([+-]?)(\d+)\/(\d+)$/.exec(part);
+    if (!m) {
+      return <span key={idx}>{part}</span>;
+    }
+    const [, sign, num, den] = m;
+    return (
+      <span key={idx} className="inline-flex items-center mx-0.5 align-middle font-math">
+        {sign && (
+          <span className={`font-bold mr-0.5 ${sign === '-' ? 'text-red-600' : 'text-slate-700'}`}>
+            {sign === '-' ? '−' : '+'}
+          </span>
+        )}
+        <span className="inline-flex flex-col items-center justify-center leading-none text-[0.82em]">
+          <span className="text-blue-700 font-semibold px-1 pb-[1px]">{num}</span>
+          <span className="w-full h-[1.5px] bg-slate-800 rounded-full" />
+          <span className="text-blue-700 font-semibold px-1 pt-[2px]">{den}</span>
+        </span>
+      </span>
+    );
+  });
+}
 
 function speakEnglishPhrase(phrase: string) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;

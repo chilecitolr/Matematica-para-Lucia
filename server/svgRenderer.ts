@@ -186,6 +186,68 @@ function renderVerticalFractionSvg(
   `;
 }
 
+function renderInlineMathWithFractionsSvg(
+  expr: string,
+  x: number,
+  cy: number,
+  fontSize: number,
+  spotlight: SpotlightTarget = 'none',
+  anchor: 'start' | 'middle' | 'end' = 'start'
+): string {
+  const fracRegex =
+    /\(([^()]+)\)\s*\/\s*\(([^()]+)\)|\(([^()]+)\)\s*\/\s*([0-9a-zA-Z⁰¹²³⁴⁵⁶⁷⁸⁹]+)|([0-9a-zA-Z⁰¹²³⁴⁵⁶⁷⁸⁹]+)\/([0-9a-zA-Z⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g;
+
+  type Seg = { kind: 'text'; value: string; w: number } | { kind: 'frac'; num: string; den: string; w: number };
+  const segments: Seg[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const fracFs = Math.max(12, Math.round(fontSize * 0.72));
+
+  while ((match = fracRegex.exec(expr)) !== null) {
+    if (match.index > lastIndex) {
+      const val = expr.slice(lastIndex, match.index);
+      segments.push({ kind: 'text', value: val, w: val.length * fontSize * 0.56 });
+    }
+    const num = match[1] ?? match[3] ?? match[5];
+    const den = match[2] ?? match[4] ?? match[6];
+    const barW = Math.max(22, Math.max(num.length, den.length) * fracFs * 0.62 + 10);
+    segments.push({ kind: 'frac', num, den, w: barW + Math.round(fontSize * 0.35) });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < expr.length) {
+    const val = expr.slice(lastIndex);
+    segments.push({ kind: 'text', value: val, w: val.length * fontSize * 0.56 });
+  }
+
+  const hasFrac = segments.some((s) => s.kind === 'frac');
+  if (!hasFrac) {
+    const anchorAttr = anchor === 'middle' ? ' text-anchor="middle"' : anchor === 'end' ? ' text-anchor="end"' : '';
+    return `<text x="${x}" y="${cy + Math.round(fontSize * 0.32)}"${anchorAttr} font-size="${fontSize}">${renderColorMathTspans(expr, fontSize, spotlight)}</text>`;
+  }
+
+  const totalW = segments.reduce((acc, s) => acc + s.w, 0);
+  let cursorX = anchor === 'middle' ? x - totalW / 2 : anchor === 'end' ? x - totalW : x;
+
+  return segments
+    .map((seg) => {
+      if (seg.kind === 'text') {
+        const tx = cursorX;
+        cursorX += seg.w;
+        return `<text x="${Math.round(tx)}" y="${cy + Math.round(fontSize * 0.3)}" font-size="${fontSize}">${renderColorMathTspans(seg.value, fontSize, spotlight)}</text>`;
+      }
+      const cx = Math.round(cursorX + seg.w / 2);
+      const barW = Math.round(seg.w - fontSize * 0.35);
+      cursorX += seg.w;
+      return `
+        <text x="${cx}" y="${cy - Math.round(fontSize * 0.25)}" text-anchor="middle" font-size="${fracFs}">${renderColorMathTspans(seg.num, fracFs, spotlight)}</text>
+        <line x1="${cx - Math.round(barW / 2)}" y1="${cy}" x2="${cx + Math.round(barW / 2)}" y2="${cy}" stroke="#0F172A" stroke-width="2" stroke-linecap="round"/>
+        <text x="${cx}" y="${cy + Math.round(fontSize * 0.72)}" text-anchor="middle" font-size="${fracFs}">${renderColorMathTspans(seg.den, fracFs, spotlight)}</text>
+      `;
+    })
+    .join('');
+}
+
 export interface FramePlan {
   svg: string;
   durationShare: number;
@@ -221,7 +283,68 @@ export function buildSceneSvgFrames(
     return frames;
   }
 
-  if (d.type === 'practice-challenge' || d.type === 'english-quiz') {
+  if (d.type === 'practice-challenge') {
+    return [
+      {
+        svg: renderSingleFrame(chapter, scene, { practiceReveal: false }),
+        durationShare: 0.65,
+        extraPauseSeconds: 10,
+      },
+      {
+        svg: renderSingleFrame(chapter, scene, { practiceReveal: true }),
+        durationShare: 0.35,
+      },
+    ];
+  }
+
+  if (d.type === 'english-quiz') {
+    const clauses = splitSpokenClauses(scene.narration);
+    const getItemKey = (text: string) =>
+      d.items
+        .map((it, idx) =>
+          doesSpokenTextMatchKeywords(text, it.matchPhrases || [it.prompt]) ? idx : -1
+        )
+        .filter((i) => i >= 0)
+        .join(',');
+
+    const grouped: Array<{ key: string; startSpeech: number; endSpeech: number; text: string }> = [];
+    for (const cl of clauses) {
+      const key = getItemKey(cl.text);
+      const prev = grouped[grouped.length - 1];
+      if (prev && (prev.key === key || grouped.length >= 12)) {
+        prev.endSpeech = cl.endRatio;
+        prev.text = `${prev.text} ${cl.text}`.trim();
+      } else {
+        grouped.push({ key, startSpeech: cl.startRatio, endSpeech: cl.endRatio, text: cl.text });
+      }
+    }
+
+    if (grouped.length > 0) {
+      const frames: FramePlan[] = grouped.map((seg, idx) => {
+        const audioStart = idx === 0 ? 0 : 0.02 + seg.startSpeech * 0.94;
+        const audioEnd = idx === grouped.length - 1 ? 1 : 0.02 + seg.endSpeech * 0.94;
+        return {
+          svg: renderSingleFrame(chapter, scene, {
+            practiceReveal: false,
+            activeSentence: seg.text,
+          }),
+          durationShare: Math.max(0.01, audioEnd - audioStart),
+        };
+      });
+      // Pause to think + reveal answers cleanly afterward
+      frames.push({
+        svg: renderSingleFrame(chapter, scene, { practiceReveal: false }),
+        durationShare: 0,
+        extraPauseSeconds: 8,
+      });
+      frames.push({
+        svg: renderSingleFrame(chapter, scene, { practiceReveal: true }),
+        durationShare: 0,
+        extraPauseSeconds: 4.5,
+      });
+      return frames;
+    }
+
     return [
       {
         svg: renderSingleFrame(chapter, scene, { practiceReveal: false }),
@@ -248,29 +371,36 @@ export function buildSceneSvgFrames(
         .filter((i) => i >= 0)
         .join(',');
 
-    const grouped: Array<{ key: string; share: number; text: string; sentIdx: number }> = [];
+    const grouped: Array<{ key: string; startSpeech: number; endSpeech: number; text: string; sentIdx: number }> = [];
     for (const cl of clauses) {
-      const share = cl.endRatio - cl.startRatio;
       const key = getMatchKey(cl.text);
       const prev = grouped[grouped.length - 1];
-      if (prev && (prev.key === key || grouped.length >= 9)) {
-        prev.share += share;
+      if (prev && (prev.key === key || grouped.length >= 14)) {
+        prev.endSpeech = cl.endRatio;
         prev.text = `${prev.text} ${cl.text}`.trim();
       } else {
-        grouped.push({ key, share, text: cl.text, sentIdx: cl.sentenceIndex });
+        grouped.push({
+          key,
+          startSpeech: cl.startRatio,
+          endSpeech: cl.endRatio,
+          text: cl.text,
+          sentIdx: cl.sentenceIndex,
+        });
       }
     }
 
     if (grouped.length > 0) {
-      return grouped.map((seg) => {
+      return grouped.map((seg, idx) => {
         const cue = cues[seg.sentIdx];
+        const audioStart = idx === 0 ? 0 : 0.02 + seg.startSpeech * 0.94;
+        const audioEnd = idx === grouped.length - 1 ? 1 : 0.02 + seg.endSpeech * 0.94;
         return {
           svg: renderSingleFrame(chapter, scene, {
             spotlight: cue?.target || 'none',
             spotlightLabel: '',
             activeSentence: seg.text,
           }),
-          durationShare: seg.share,
+          durationShare: Math.max(0.01, audioEnd - audioStart),
         };
       });
     }
@@ -536,14 +666,14 @@ function renderDiagramSvg(
     case 'fraction-flip': {
       const hiFlip = sp === 'flip';
       return `
-        <text x="260" y="340" text-anchor="middle" font-size="44">${renderColorMathTspans(d.first, 44, sp)}</text>
+        ${renderInlineMathWithFractionsSvg(d.first, 260, 325, 42, sp, 'middle')}
         <text x="360" y="340" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="44" font-weight="700" fill="#64748B">÷</text>
         ${renderVerticalFractionSvg(465, 325, d.secondNum, d.secondDen, 1.2, sp)}
 
         <text x="580" y="340" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="44" font-weight="700" fill="#1D4ED8">→</text>
 
         <rect x="640" y="226" width="450" height="196" rx="18" fill="${hiFlip ? '#DBEAFE' : '#EFF6FF'}" stroke="${hiFlip ? '#2563EB' : '#93C5FD'}" stroke-width="${hiFlip ? '4' : '2.5'}"/>
-        <text x="745" y="340" text-anchor="middle" font-size="44">${renderColorMathTspans(d.first, 44, sp)}</text>
+        ${renderInlineMathWithFractionsSvg(d.first, 745, 325, 42, sp, 'middle')}
         <text x="855" y="340" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="44" font-weight="700" fill="#1D4ED8">×</text>
         ${renderVerticalFractionSvg(975, 320, d.secondDen, d.secondNum, hiFlip ? 1.38 : 1.2, sp)}
         <text x="975" y="405" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#1D4ED8">Se dio vuelta</text>
@@ -555,7 +685,7 @@ function renderDiagramSvg(
         }
         ${
           d.result
-            ? `<text x="820" y="486" text-anchor="middle" font-size="28">Resultado: ${renderColorMathTspans(d.result, 28, sp)}</text>`
+            ? renderInlineMathWithFractionsSvg(d.result, 820, 480, 26, sp, 'middle')
             : ''
         }
       `;
@@ -680,7 +810,7 @@ function renderDiagramSvg(
       return `
         ${listSvg}
         <rect x="645" y="235" width="540" height="225" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
-        <text x="915" y="325" text-anchor="middle" font-size="28">${renderColorMathTspans(d.expression, 28, sp)}</text>
+        ${renderInlineMathWithFractionsSvg(d.expression, 915, 315, 26, sp, 'middle')}
         ${noteLines
           .map(
             (l, i) =>
@@ -833,23 +963,24 @@ function renderDiagramSvg(
     case 'steps-board': {
       const revealCount = opts.stepsReveal ?? d.lines.length;
       const visibleLines = d.lines.slice(0, revealCount);
-      const rowH = Math.min(54, Math.floor(310 / Math.max(1, d.lines.length)));
+      const rowH = Math.min(58, Math.floor(325 / Math.max(1, d.lines.length)));
 
       const rowsSvg = visibleLines
         .map((line, idx) => {
-          const y = 232 + idx * (rowH + 8);
+          const y = 224 + idx * (rowH + 6);
+          const cy = y + Math.round(rowH * 0.5);
           const isNewest = idx === visibleLines.length - 1;
           return `
             <rect x="88" y="${y}" width="1104" height="${rowH}" rx="12" fill="${line.focus || isNewest ? '#EFF6FF' : '#F8FAFC'}" stroke="${line.focus || isNewest ? '#3B82F6' : '#E2E8F0'}" stroke-width="${isNewest ? '2.5' : '1.5'}"/>
             ${
               line.label
-                ? `<text x="114" y="${y + Math.round(rowH * 0.65)}" font-family="Noto Sans, sans-serif" font-size="20" font-weight="700" fill="#334155">${esc(line.label)}</text>`
+                ? `<text x="114" y="${cy + 6}" font-family="Noto Sans, sans-serif" font-size="19" font-weight="700" fill="#334155">${esc(line.label)}</text>`
                 : ''
             }
-            <text x="${line.label ? 200 : 114}" y="${y + Math.round(rowH * 0.65)}" font-size="23">${renderColorMathTspans(line.math, 23, isNewest ? sp : 'none')}</text>
+            ${renderInlineMathWithFractionsSvg(line.math, line.label ? 208 : 114, cy, 21, isNewest ? sp : 'none', 'start')}
             ${
               line.note
-                ? `<text x="1168" y="${y + Math.round(rowH * 0.65)}" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="16" fill="#475569">${esc(line.note)}</text>`
+                ? `<text x="1168" y="${cy + 6}" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="16" fill="#475569">${esc(line.note)}</text>`
                 : ''
             }
           `;
@@ -857,7 +988,7 @@ function renderDiagramSvg(
         .join('');
 
       return `
-        <text x="88" y="214" font-family="Noto Sans, sans-serif" font-size="16" font-weight="700" fill="#64748B">${esc(d.exerciseTag.toUpperCase())}</text>
+        <text x="88" y="210" font-family="Noto Sans, sans-serif" font-size="16" font-weight="700" fill="#64748B">${esc(d.exerciseTag.toUpperCase())}</text>
         ${rowsSvg}
       `;
     }
@@ -868,7 +999,7 @@ function renderDiagramSvg(
         return `
           <rect x="140" y="218" width="1000" height="125" rx="16" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
           <text x="180" y="255" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#1D4ED8">PAUSA PARA PENSAR (10 SEGUNDOS)</text>
-          <text x="640" y="312" text-anchor="middle" font-size="44">${renderColorMathTspans(d.promptMath, 44, sp)}</text>
+          ${renderInlineMathWithFractionsSvg(d.promptMath, 640, 304, 38, sp, 'middle')}
 
           <text x="640" y="405" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="24" font-weight="600" fill="#0F172A">${esc(d.question)}</text>
           <rect x="240" y="445" width="800" height="58" rx="12" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>
@@ -1005,6 +1136,11 @@ function renderDiagramSvg(
       const gap = 16;
       const cardW = Math.floor((1100 - gap * (cols - 1)) / cols);
       const cardH = Math.min(138, Math.floor((275 - gap * (rows - 1)) / Math.max(1, rows)));
+      const activeText = !revealed ? opts.activeSentence || '' : '';
+      const matchedFlags = d.items.map((it) =>
+        doesSpokenTextMatchKeywords(activeText, it.matchPhrases || [it.prompt])
+      );
+      const anyMatched = !revealed && matchedFlags.some(Boolean);
 
       const cardsSvg = d.items
         .map((it, idx) => {
@@ -1012,19 +1148,24 @@ function renderDiagramSvg(
           const row = Math.floor(idx / cols);
           const x = 90 + col * (cardW + gap);
           const y = 235 + row * (cardH + gap);
-          const fill = revealed ? '#ECFDF5' : '#F8FAFC';
-          const stroke = revealed ? '#34D399' : '#CBD5E1';
+          const isHit = anyMatched && matchedFlags[idx];
+          const fill = revealed ? '#ECFDF5' : isHit ? '#FEF3C7' : '#F8FAFC';
+          const stroke = revealed ? '#34D399' : isHit ? '#D97706' : '#CBD5E1';
+          const sw = isHit ? 4 : 2;
+          const opacityAttr = anyMatched && !isHit ? ' opacity="0.62"' : '';
           const optsText = revealed ? `✓ ${it.correctOption}` : it.options.join('   /   ');
 
           return `
-            <rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-            <text x="${x + 22}" y="${y + 40}" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#0F172A">${esc(it.prompt)}</text>
-            ${
-              it.subLabel
-                ? `<text x="${x + 22}" y="${y + 68}" font-family="Noto Sans, sans-serif" font-size="16" fill="#64748B">${esc(it.subLabel)}</text>`
-                : ''
-            }
-            <text x="${x + 22}" y="${y + cardH - 22}" font-family="Noto Sans, sans-serif" font-size="20" font-weight="700" fill="${revealed ? '#047857' : '#1D4ED8'}">${esc(optsText)}</text>
+            <g${opacityAttr}>
+              <rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+              <text x="${x + 22}" y="${y + 40}" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#0F172A">${esc(it.prompt)}</text>
+              ${
+                it.subLabel
+                  ? `<text x="${x + 22}" y="${y + 68}" font-family="Noto Sans, sans-serif" font-size="16" fill="#64748B">${esc(it.subLabel)}</text>`
+                  : ''
+              }
+              <text x="${x + 22}" y="${y + cardH - 22}" font-family="Noto Sans, sans-serif" font-size="20" font-weight="700" fill="${revealed ? '#047857' : '#1D4ED8'}">${esc(optsText)}</text>
+            </g>
           `;
         })
         .join('');

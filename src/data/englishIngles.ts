@@ -16,8 +16,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'No hace falta aprender todo en un día. Seguimos tres pasos simples: Mirar, Comprender y Practicar.',
         narration:
-          'Hola Lucía. Bienvenida a Inglés paso a paso. No hace falta aprender todo en un día. Vamos a usar tres pasos tranquilos: primero mirar la imagen, segundo comprender el significado de cada palabra, y tercero practicar juntas. Si algo cuesta, volvemos al paso anterior. ¡Eso también es aprender!',
-        durationSeconds: 18,
+          'Hola Lucía. Bienvenida a Inglés paso a paso. No hace falta aprender todo en un día. Vamos a usar tres pasos tranquilos. Primero mirar la imagen. Segundo comprender el significado de cada palabra. Y tercero practicar juntas. Si algo cuesta, volvemos al paso anterior. ¡Eso también es aprender!',
+        durationSeconds: 21,
         supportPhrase: 'Si algo cuesta, volvemos al paso anterior. ¡Eso también es aprender!',
         diagram: {
           type: 'english-cards',
@@ -59,8 +59,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Asociamos cada palabra en inglés con su dibujo y su significado en español. Podés tocar el parlante para escucharla.',
         narration:
-          'Empezamos con el clima, Weather. Mirá cada dibujo con calma y asociá la palabra. Sunny es soleado. Cloudy es nublado. Rainy es lluvioso. Windy es ventoso. Stormy es tormentoso. Y Snowy es nevado. Decí en voz alta: Sunny es soleado, Cloudy es nublado.',
-        durationSeconds: 20,
+          'Empezamos con el clima, Weather. Mirá cada dibujo con calma. La primera palabra es Sunny y significa soleado. La segunda es Cloudy y significa nublado. La tercera es Rainy y significa lluvioso. La cuarta es Windy y significa ventoso. La quinta es Stormy y significa tormentoso. Y la sexta es Snowy y significa nevado. Podés tocar el parlante de cada tarjeta cuando quieras volver a escucharla.',
+        durationSeconds: 36,
         supportPhrase: 'Decí en voz alta: SUNNY = soleado. CLOUDY = nublado.',
         diagram: {
           type: 'english-cards',
@@ -85,8 +85,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Estas cuatro palabras nombran fenómenos fuertes de la naturaleza.',
         narration:
-          'Ahora vemos cuatro fenómenos de la naturaleza. Tornado se escribe igual y significa tornado. Flood significa inundación. Wildfire es incendio forestal. Y Volcano significa volcán. Mirá con atención el dibujo de Flood para recordar que es inundación.',
-        durationSeconds: 17,
+          'Ahora vemos cuatro fenómenos de la naturaleza. El primero es Tornado y se escribe igual en español. El segundo es Flood y significa inundación. El tercero es Wildfire y significa incendio forestal. Y el cuarto es Volcano y significa volcán. Mirá el dibujo de Flood con olas de agua para recordar que significa inundación.',
+        durationSeconds: 26,
         supportPhrase: 'Recordá mirar la imagen primero: Flood = ola de agua = inundación.',
         diagram: {
           type: 'english-cards',
@@ -108,8 +108,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Elegí la palabra correcta tocando el botón. No hace falta escribir nada.',
         narration:
-          '¡Tu turno! Mirá cada dibujo y elegí la palabra correcta tocando una opción. No hace falta escribir. Pensá qué pasa en español: Hay sol, Hay muchas nubes, Está lloviendo, y Hay un tornado.',
-        durationSeconds: 15,
+          '¡Tu turno! Mirá cada dibujo y elegí la palabra correcta tocando una opción. No hace falta escribir nada. Vamos de a una tarjeta. En la primera dice Hay sol. En la segunda dice Hay muchas nubes. En la tercera dice Está lloviendo. Y en la cuarta dice Hay un tornado.',
+        durationSeconds: 22,
         supportPhrase: 'Pista: mirá el dibujo y pensá qué pasa en español.',
         diagram: {
           type: 'english-quiz',
@@ -154,7 +154,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               correctOption: 'TORNADO',
               speakAfter: 'There is a tornado',
               tone: 'lilac',
-              matchPhrases: ['hay un tornado', 'un tornado'],
+              matchPhrases: ['hay un tornado'],
             },
           ],
         },
@@ -176,8 +176,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'WAS y WERE son las formas del verbo TO BE en pasado. La clave está en mirar la persona.',
         narration:
-          'Tema dos: Was y Were. Son las formas del verbo To Be, ser o estar, pero en pasado. Usamos Was con una sola persona: I, He, She, It. Es decir: yo, él, ella o eso. Y usamos Were con plural o vos: You, We, They. Vos, nosotros o ellos. Recordá: mirá siempre la persona.',
-        durationSeconds: 20,
+          'Tema dos: Was y Were. Son las formas del verbo To Be en pasado, que significa ser o estar. Primero vemos Was para una sola persona: I es yo, He es él, She es ella e It es eso. Después vemos Were para plural o vos: You es vos, We es nosotros y They es ellos. Recordá mirar siempre la persona.',
+        durationSeconds: 26,
         supportPhrase: 'Recordá: WAS y WERE hablan del pasado.',
         diagram: {
           type: 'english-cards',
@@ -193,7 +193,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               speakText: 'I was. He was. She was.',
               tone: 'mint',
               role: 'persona',
-              matchPhrases: ['usamos was', 'una sola persona', 'yo, el, ella o eso'],
+              matchPhrases: ['vemos was', 'una sola persona', 'i es yo', 'he es el', 'she es ella', 'it es eso'],
             },
             {
               title: 'WERE',
@@ -203,7 +203,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               speakText: 'You were. We were. They were.',
               tone: 'peach',
               role: 'verbo',
-              matchPhrases: ['usamos were', 'plural o vos', 'vos, nosotros o ellos'],
+              matchPhrases: ['vemos were', 'plural o vos', 'you es vos', 'we es nosotros', 'they es ellos'],
             },
           ],
           footerTip: 'I / he / she / it → WAS   ·   You / we / they → WERE.',
@@ -216,8 +216,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Afirmar es decir que algo sí pasó o sí era. Orden simple: PERSONA + WAS / WERE + INFORMACIÓN.',
         narration:
-          'Para armar una oración afirmativa seguimos un orden fijo: primero la persona en azul, después Was o Were en verde, y al final la información. Por ejemplo: I was happy, yo estaba feliz. She was at home, ella estaba en casa. They were tired, ellos estaban cansados.',
-        durationSeconds: 19,
+          'Para armar una oración afirmativa seguimos un orden fijo. Primero va la persona en azul, después Was o Were en verde, y al final la información. Vemos tres ejemplos despacio. Primero I was happy que significa yo estaba feliz. Segundo She was at home que significa ella estaba en casa. Y tercero They were tired que significa ellos estaban cansados.',
+        durationSeconds: 31,
         supportPhrase: 'Siempre en el mismo orden: Persona + WAS / WERE + información.',
         diagram: {
           type: 'english-cards',
@@ -259,8 +259,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Para decir que NO, agregamos NOT después de WAS o WERE: WASN’T y WEREN’T.',
         narration:
-          'Para decir que algo no pasó o no estaba así, agregamos la negación NOT en rojo. Was not se acorta como Wasn’t: I wasn’t tired, yo no estaba cansada. Y Were not se acorta como Weren’t: They weren’t at school, ellos no estaban en la escuela.',
-        durationSeconds: 18,
+          'Para decir que algo no pasó o no estaba así, agregamos la negación NOT en rojo. Primero vemos Was not que se acorta como Wasn’t: por ejemplo I wasn’t tired significa yo no estaba cansada. Y segundo vemos Were not que se acorta como Weren’t: por ejemplo They weren’t at school significa ellos no estaban en la escuela.',
+        durationSeconds: 24,
         supportPhrase: "NOT significa 'no'. WASN'T y WEREN'T ya llevan ese 'no'.",
         diagram: {
           type: 'english-cards',
@@ -297,8 +297,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'En una pregunta, WAS o WERE pasan al principio antes de la persona.',
         narration:
-          'Para hacer una pregunta, Was o Were van adelante de todo, al principio de la oración. Por ejemplo: Was she happy?, ¿ella estaba feliz? Were they at home?, ¿ellos estaban en casa? Y respondemos cortito: Yes, she was, o No, she wasn’t.',
-        durationSeconds: 18,
+          'Para hacer una pregunta, Was o Were van adelante de todo, antes de la persona. Primero vemos Was she happy que significa ¿ella estaba feliz? Podemos responder Yes she was o No she wasn’t. Y segundo vemos Were they at home que significa ¿ellos estaban en casa? Podemos responder Yes they were o No they weren’t.',
+        durationSeconds: 25,
         supportPhrase: "Para responder: YES, she was.  /  NO, she wasn't.",
         diagram: {
           type: 'english-cards',
@@ -313,7 +313,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               speakText: 'Was she happy? Yes, she was.',
               tone: 'blue',
               role: 'verbo',
-              matchPhrases: ['was she happy', 'ella estaba feliz', 'yes, she was', "no, she wasn't"],
+              matchPhrases: ['was she happy', 'ella estaba feliz', 'yes she was', "no she wasn't"],
             },
             {
               title: 'Were they at home?',
@@ -322,7 +322,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               speakText: 'Were they at home? No, they were not.',
               tone: 'mint',
               role: 'verbo',
-              matchPhrases: ['were they at home', 'ellos estaban en casa'],
+              matchPhrases: ['were they at home', 'ellos estaban en casa', 'yes they were', "no they weren't"],
             },
           ],
         },
@@ -334,8 +334,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Leé primero la persona de cada oración y después elegí WAS o WERE.',
         narration:
-          'Ahora practicamos Was y Were. Leé primero la persona en cada tarjeta: I at home, They happy, She tired, y We at school. Y elegí si corresponde Was o Were.',
-        durationSeconds: 14,
+          'Ahora practicamos Was y Were con calma. Leé primero la persona en cada tarjeta. En la primera dice I at home. En la segunda dice They happy. En la tercera dice She tired. Y en la cuarta dice We at school. Elegí en cada una si corresponde Was o Were.',
+        durationSeconds: 22,
         supportPhrase: 'I / he / she / it → WAS.   You / we / they → WERE.',
         diagram: {
           type: 'english-quiz',
@@ -402,8 +402,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'El Past Simple cuenta acciones que pasaron ayer o la semana pasada. El verbo cambia para avisar que fue antes.',
         narration:
-          'Tema tres: Past Simple. Lo usamos para contar cosas que ya ocurrieron, por ejemplo Yesterday, que significa ayer, o Last week, la semana pasada. Hoy digo I play, yo juego. Pero si fue ayer, el verbo cambia: I played, yo jugué.',
-        durationSeconds: 17,
+          'Tema tres: Past Simple. Lo usamos para contar acciones que ya ocurrieron, como Yesterday que es ayer o Last week que es la semana pasada. Por ejemplo para hoy decimos I play que significa yo juego. Pero si fue ayer, el verbo cambia a I played que significa yo jugué.',
+        durationSeconds: 22,
         supportPhrase: 'El verbo cambia porque la acción ocurrió antes.',
         diagram: {
           type: 'english-cards',
@@ -419,7 +419,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               tone: 'blue',
               speakText: 'Today, I play.',
               role: 'verbo',
-              matchPhrases: ['hoy digo', 'i play', 'yo juego'],
+              matchPhrases: ['hoy decimos', 'i play', 'yo juego'],
             },
             {
               title: 'YESTERDAY · AYER',
@@ -429,7 +429,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               tone: 'mint',
               speakText: 'Yesterday, I played.',
               role: 'tiempo',
-              matchPhrases: ['si fue ayer', 'i played', 'yo jugue', 'yesterday'],
+              matchPhrases: ['si fue ayer', 'i played', 'yo jugue'],
             },
           ],
         },
@@ -441,8 +441,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Muchos verbos solo agregan -ED al final para hablar del pasado.',
         narration:
-          'Muchos verbos son fáciles: solo les agregamos E-D al final. Play pasa a Played, jugar pasó a jugó. Walk pasa a Walked, caminar pasó a caminó. Visit pasa a Visited, visitar pasó a visitó. Watch pasa a Watched, mirar pasó a miró.',
-        durationSeconds: 18,
+          'Muchos verbos son fáciles: solo les agregamos E-D al final para hablar del pasado. El primero es Play que pasa a Played y significa jugar pasó a jugó. El segundo es Walk que pasa a Walked y significa caminar pasó a caminó. El tercero es Visit que pasa a Visited y significa visitar pasó a visitó. Y el cuarto es Watch que pasa a Watched y significa mirar pasó a miró.',
+        durationSeconds: 30,
         supportPhrase: 'Regla simple: VERBO + ED = PASADO.',
         diagram: {
           type: 'english-cards',
@@ -450,10 +450,10 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
           bannerRole: 'tiempo',
           layout: '2col',
           cards: [
-            { title: 'PLAY → PLAYED', meaning: 'jugar → jugó', tone: 'blue', speakText: 'Play. Played.', role: 'tiempo', matchPhrases: ['play pasa a played', 'jugar paso a jugo'] },
-            { title: 'WALK → WALKED', meaning: 'caminar → caminó', tone: 'peach', speakText: 'Walk. Walked.', role: 'tiempo', matchPhrases: ['walk pasa a walked', 'caminar paso a camino'] },
-            { title: 'VISIT → VISITED', meaning: 'visitar → visitó', tone: 'blue', speakText: 'Visit. Visited.', role: 'tiempo', matchPhrases: ['visit pasa a visited', 'visitar paso a visito'] },
-            { title: 'WATCH → WATCHED', meaning: 'mirar → miró', tone: 'peach', speakText: 'Watch. Watched.', role: 'tiempo', matchPhrases: ['watch pasa a watched', 'mirar paso a miro'] },
+            { title: 'PLAY → PLAYED', meaning: 'jugar → jugó', tone: 'blue', speakText: 'Play. Played.', role: 'tiempo', matchPhrases: ['played', 'jugar paso a jugo'] },
+            { title: 'WALK → WALKED', meaning: 'caminar → caminó', tone: 'peach', speakText: 'Walk. Walked.', role: 'tiempo', matchPhrases: ['walked', 'caminar paso a camino'] },
+            { title: 'VISIT → VISITED', meaning: 'visitar → visitó', tone: 'blue', speakText: 'Visit. Visited.', role: 'tiempo', matchPhrases: ['visited', 'visitar paso a visito'] },
+            { title: 'WATCH → WATCHED', meaning: 'mirar → miró', tone: 'peach', speakText: 'Watch. Watched.', role: 'tiempo', matchPhrases: ['watched', 'mirar paso a miro'] },
           ],
         },
       },
@@ -464,20 +464,20 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Algunos verbos no agregan -ED sino que cambian de forma. Por ahora aprendemos solo estos seis.',
         narration:
-          'Hay verbos que no usan E-D y cambian de forma. No hace falta estudiar una lista enorme: aprendemos estos seis primero. Go cambia a Went, ir fue. Eat cambia a Ate, comer comió. See cambia a Saw, ver vio. Have cambia a Had, tener tuvo. Buy cambia a Bought, comprar compró. Y Do cambia a Did, hacer hizo.',
-        durationSeconds: 22,
+          'Hay verbos que no usan E-D y cambian de forma. No hace falta estudiar una lista enorme: aprendemos estos seis paso a paso. El primero es Go que cambia a Went y significa ir fue. El segundo es Eat que cambia a Ate y significa comer comió. El tercero es See que cambia a Saw y significa ver vio. El cuarto es Have que cambia a Had y significa tener tuvo. El quinto es Buy que cambia a Bought y significa comprar compró. Y el sexto es Do que cambia a Did y significa hacer hizo.',
+        durationSeconds: 40,
         supportPhrase: 'Por ahora, aprendé estos seis. No hace falta estudiar una lista enorme.',
         diagram: {
           type: 'english-cards',
           banner: 'No usan -ED: cambian su forma',
           layout: '3col',
           cards: [
-            { title: 'GO → WENT', meaning: 'ir → fue', tone: 'blue', speakText: 'Go. Went.', role: 'verbo', matchPhrases: ['go cambia a went', 'ir fue'] },
-            { title: 'EAT → ATE', meaning: 'comer → comió', tone: 'mint', speakText: 'Eat. Ate.', role: 'verbo', matchPhrases: ['eat cambia a ate', 'comer comio'] },
-            { title: 'SEE → SAW', meaning: 'ver → vio', tone: 'peach', speakText: 'See. Saw.', role: 'verbo', matchPhrases: ['see cambia a saw', 'ver vio'] },
-            { title: 'HAVE → HAD', meaning: 'tener → tuvo', tone: 'blue', speakText: 'Have. Had.', role: 'verbo', matchPhrases: ['have cambia a had', 'tener tuvo'] },
-            { title: 'BUY → BOUGHT', meaning: 'comprar → compró', tone: 'mint', speakText: 'Buy. Bought.', role: 'verbo', matchPhrases: ['buy cambia a bought', 'comprar compro'] },
-            { title: 'DO → DID', meaning: 'hacer → hizo', tone: 'peach', speakText: 'Do. Did.', role: 'verbo', matchPhrases: ['do cambia a did', 'hacer hizo'] },
+            { title: 'GO → WENT', meaning: 'ir → fue', tone: 'blue', speakText: 'Go. Went.', role: 'verbo', matchPhrases: ['went', 'ir fue'] },
+            { title: 'EAT → ATE', meaning: 'comer → comió', tone: 'mint', speakText: 'Eat. Ate.', role: 'verbo', matchPhrases: ['ate', 'comer comio'] },
+            { title: 'SEE → SAW', meaning: 'ver → vio', tone: 'peach', speakText: 'See. Saw.', role: 'verbo', matchPhrases: ['saw', 'ver vio'] },
+            { title: 'HAVE → HAD', meaning: 'tener → tuvo', tone: 'blue', speakText: 'Have. Had.', role: 'verbo', matchPhrases: ['had', 'tener tuvo'] },
+            { title: 'BUY → BOUGHT', meaning: 'comprar → compró', tone: 'mint', speakText: 'Buy. Bought.', role: 'verbo', matchPhrases: ['bought', 'comprar compro'] },
+            { title: 'DO → DID', meaning: 'hacer → hizo', tone: 'peach', speakText: 'Do. Did.', role: 'verbo', matchPhrases: ['did', 'hacer hizo'] },
           ],
         },
       },
@@ -488,8 +488,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           "Cuando aparece DID o DIDN'T, el verbo principal vuelve a su forma normal (sin -ED).",
         narration:
-          'Esta regla es un secreto clave: cuando aparece Did o Didn’t en la oración, el verbo vuelve a su forma normal, sin E-D. En negativa decimos I didn’t play, yo no jugué. En pregunta decimos Did you play?, ¿vos jugaste? Nunca decimos didn’t played.',
-        durationSeconds: 18,
+          'Esta regla es un secreto clave: cuando aparece Did o Didn’t en la oración, el verbo vuelve a su forma normal sin E-D. En negativa decimos I didn’t play que significa yo no jugué y nunca decimos didn’t played. Y en pregunta decimos Did you play que significa ¿vos jugaste?',
+        durationSeconds: 22,
         supportPhrase: 'No usamos PLAYED después de DID. Decimos DID play.',
         diagram: {
           type: 'english-cards',
@@ -528,8 +528,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Completá cada oración mirando si es afirmativa, irregular o si tiene DID / DIDN’T.',
         narration:
-          'Practicamos Past Simple. En las dos primeras la acción es afirmativa: Yesterday I played football, y She went to school. En las dos de abajo aparece Didn’t en I didn’t eat pizza, y Did en Did they watch TV, así que acordate: el verbo queda normal.',
-        durationSeconds: 15,
+          'Practicamos Past Simple paso a paso. En la primera tarjeta la acción es afirmativa y dice Yesterday I played football. En la segunda usamos el irregular de go en She went to school. En la tercera aparece Didn’t en I didn’t eat pizza así que el verbo queda normal. Y en la cuarta pregunta con Did en Did they watch TV también queda normal.',
+        durationSeconds: 30,
         supportPhrase: 'Si ves DID o DIDN’T, elegí el verbo en su forma normal.',
         diagram: {
           type: 'english-quiz',
@@ -596,8 +596,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Las tres sirven para hablar del tiempo. Vamos de lo más grande a lo más exacto: IN (período grande), ON (día), AT (hora).',
         narration:
-          'Tema cuatro: In, On y At. Usamos IN para períodos grandes, como meses y años: In May, In 2025. Usamos ON para días y fechas exactas: On Monday, On May 5th. Y usamos AT para horas y momentos puntuales: At 7 o’clock, At night. Recordá: IN es período grande, ON es día, AT es hora.',
-        durationSeconds: 20,
+          'Tema cuatro: In, On y At. Primero usamos IN para períodos grandes como meses y años: por ejemplo In May e In 2025. Segundo usamos ON para días y fechas exactas: por ejemplo On Monday y On May 5th. Y tercero usamos AT para horas y momentos puntuales: por ejemplo At 7 o’clock y At night. Recordá: IN es período grande, ON es día, y AT es hora.',
+        durationSeconds: 29,
         supportPhrase: 'IN = período grande  •  ON = día  •  AT = hora',
         diagram: {
           type: 'english-cards',
@@ -648,8 +648,8 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Pensá primero si la tarjeta habla de un mes/año, de un día o de una hora.',
         narration:
-          'Probemos juntas con In, On y At. Antes de tocar una opción, mirá la palabra en gris: ¿es un día como Monday o Friday, una hora como 8 o’clock, un mes como July, un año como 2024, o un momento como la noche?',
-        durationSeconds: 15,
+          'Probemos juntas con In, On y At. Antes de tocar una opción, mirá la palabra en gris en cada tarjeta. En la primera dice Monday que es un día. En la segunda dice 8 o’clock que es una hora. En la tercera dice July que es un mes. En la cuarta dice 2024 que es un año. En la quinta dice night que es la noche. Y en la sexta dice Friday que es un día.',
+        durationSeconds: 28,
         supportPhrase: 'Mes / año → IN  ·  Día → ON  ·  Hora / night → AT',
         diagram: {
           type: 'english-quiz',
@@ -665,7 +665,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               correctOption: 'ON',
               speakAfter: 'On Monday.',
               tone: 'blue',
-              matchPhrases: ['monday', 'es un dia'],
+              matchPhrases: ['monday'],
             },
             {
               id: 'q-prep-2',
@@ -676,7 +676,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               correctOption: 'AT',
               speakAfter: "At eight o'clock.",
               tone: 'mint',
-              matchPhrases: ["8 o'clock", 'una hora'],
+              matchPhrases: ["8 o'clock"],
             },
             {
               id: 'q-prep-3',
@@ -687,7 +687,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               correctOption: 'IN',
               speakAfter: 'In July.',
               tone: 'peach',
-              matchPhrases: ['july', 'un mes'],
+              matchPhrases: ['july'],
             },
             {
               id: 'q-prep-4',
@@ -698,7 +698,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               correctOption: 'IN',
               speakAfter: 'In 2024.',
               tone: 'blue',
-              matchPhrases: ['2024', 'un ano'],
+              matchPhrases: ['2024'],
             },
             {
               id: 'q-prep-5',
@@ -709,7 +709,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               correctOption: 'AT',
               speakAfter: 'At night.',
               tone: 'mint',
-              matchPhrases: ['la noche', 'un momento'],
+              matchPhrases: ['night', 'la noche'],
             },
             {
               id: 'q-prep-6',
@@ -720,7 +720,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               correctOption: 'ON',
               speakAfter: 'On Friday.',
               tone: 'peach',
-              matchPhrases: ['friday', 'es un dia'],
+              matchPhrases: ['friday'],
             },
           ],
         },
@@ -732,21 +732,21 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
         keyMessage:
           'Mirá cada tarjeta tranquila para comprobar todo lo que ya sabés.',
         narration:
-          'Hacemos un repaso cortito de todo lo que vimos. Was va con I, he, she, it. Were va con you, we, they. Past Simple es para una acción que ya pasó. Didn’t hace la negativa en pasado. In se usa para meses y años, On para días y fechas, y At para horas.',
-        durationSeconds: 18,
+          'Hacemos un repaso cortito y tranquilo de todo lo que vimos. Primero Was va con I, he, she e it. Segundo Were va con you, we y they. Tercero Past Simple es para una acción que ya pasó. Cuarto Didn’t hace la negativa en pasado. Quinto In se usa para meses y años. Sexto On se usa para días y fechas. Y séptimo At se usa para horas y momentos.',
+        durationSeconds: 31,
         supportPhrase: 'Si alguna se olvida, volvemos al ejemplo. El error nos muestra qué repasar.',
         diagram: {
           type: 'english-cards',
           banner: 'Resumen rápido de los 4 temas',
           layout: '2col',
           cards: [
-            { title: 'WAS', meaning: 'I / he / she / it', tone: 'blue', role: 'persona', matchPhrases: ['was va con'] },
-            { title: 'WERE', meaning: 'you / we / they', tone: 'mint', role: 'persona', matchPhrases: ['were va con'] },
+            { title: 'WAS', meaning: 'I / he / she / it', tone: 'blue', role: 'persona', matchPhrases: ['was va con', 'she e it'] },
+            { title: 'WERE', meaning: 'you / we / they', tone: 'mint', role: 'persona', matchPhrases: ['were va con', 'we y they'] },
             { title: 'PAST SIMPLE', meaning: 'acción que ya pasó (-ED o irregular)', tone: 'blue', role: 'verbo', matchPhrases: ['past simple es'] },
             { title: "DIDN'T", meaning: 'negativa en pasado (verbo normal)', tone: 'mint', role: 'neg', matchPhrases: ["didn't hace"] },
             { title: 'IN', meaning: 'meses y años', tone: 'blue', role: 'tiempo', matchPhrases: ['in se usa'] },
-            { title: 'ON', meaning: 'días y fechas', tone: 'mint', role: 'tiempo', matchPhrases: ['on para dias'] },
-            { title: 'AT', meaning: 'horas y momentos', tone: 'blue', role: 'tiempo', matchPhrases: ['at para horas'] },
+            { title: 'ON', meaning: 'días y fechas', tone: 'mint', role: 'tiempo', matchPhrases: ['on se usa'] },
+            { title: 'AT', meaning: 'horas y momentos', tone: 'blue', role: 'tiempo', matchPhrases: ['at se usa'] },
           ],
         },
       },
@@ -758,7 +758,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
           'No importa si necesitás más tiempo. Podés leer de nuevo, escuchar y practicar. Un paso pequeño también es un gran avance.',
         narration:
           '¡Felicitaciones Lucía! Ya recorriste los cuatro temas de Inglés: el clima y los desastres, Was y Were, Past Simple, e In, On y At. No importa si necesitás más tiempo: podés leer de nuevo, escuchar las palabras y practicar cuando quieras. Un paso pequeño también es un gran avance.',
-        durationSeconds: 17,
+        durationSeconds: 21,
         supportPhrase: 'Un paso pequeño también es un gran avance. ¡Vos podés!',
         diagram: {
           type: 'english-cards',
@@ -791,7 +791,7 @@ export const ENGLISH_CHAPTERS: Chapter[] = [
               meaning: 'Distingo período grande (IN), día (ON) y hora (AT).',
               icon: 'check',
               tone: 'lilac',
-              matchPhrases: ['in, on y at'],
+              matchPhrases: ['on y at', 'e in'],
             },
           ],
         },

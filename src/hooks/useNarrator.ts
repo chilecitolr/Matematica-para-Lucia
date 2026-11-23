@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { estimateNarrationDurationMs } from '../utils/spotlightCues';
 
 interface NarratorOptions {
   text: string;
@@ -160,6 +161,7 @@ export function useNarrator({
   const quotaExceededRef = useRef(false);
   const timerRef = useRef<number | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onSceneComplete);
   onCompleteRef.current = onSceneComplete;
 
@@ -261,12 +263,17 @@ export function useNarrator({
       window.clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
+    if (rafRef.current !== null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     if (sharedAudioRef.current && !isUnlockingRef.current) {
       const audio = sharedAudioRef.current;
       audio.pause();
       audio.onended = null;
       audio.onerror = null;
       audio.ontimeupdate = null;
+      audio.onplaying = null;
     }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -313,7 +320,10 @@ export function useNarrator({
 
     const speakWithBrowser = () => {
       if (cancelled) return;
-      const estimatedMs = Math.round(fallbackDurationMs / playbackRate);
+      const estimatedMs = Math.max(
+        Math.round(fallbackDurationMs / playbackRate),
+        estimateNarrationDurationMs(text, playbackRate * 0.9)
+      );
 
       if (muted || typeof window === 'undefined' || !('speechSynthesis' in window)) {
         setVoiceEngine('silent');
@@ -336,23 +346,39 @@ export function useNarrator({
         utterance.lang = preferred?.lang || 'es-AR';
         utterance.rate = Math.max(0.72, Math.min(1.1, playbackRate * 0.92));
         utterance.pitch = 1.05;
+        let boundaryActive = false;
 
         utterance.onstart = () => {
           if (!cancelled) {
             setIsSpeaking(true);
-            startTimerProgress(estimatedMs);
+            if (!boundaryActive) {
+              startTimerProgress(estimatedMs);
+            }
           }
         };
         utterance.onboundary = (ev) => {
           if (!cancelled && text.length > 0 && typeof ev.charIndex === 'number') {
-            setProgress(Math.min(1, ev.charIndex / text.length));
+            if (!boundaryActive) {
+              boundaryActive = true;
+              if (progressIntervalRef.current !== null) {
+                window.clearInterval(progressIntervalRef.current);
+                progressIntervalRef.current = null;
+              }
+            }
+            const textRatio = Math.min(1, Math.max(0, ev.charIndex / text.length));
+            // Align live speech char boundary inside [lead=0.02 .. 1-tail=0.96] window
+            setProgress(0.02 + textRatio * 0.94);
           }
         };
         utterance.onend = () => {
           if (cancelled) return;
+          if (progressIntervalRef.current !== null) {
+            window.clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+          }
           setProgress(1);
           setIsSpeaking(false);
-          scheduleNext(1800);
+          scheduleNext(2000);
         };
         utterance.onerror = () => {
           if (cancelled) return;
@@ -394,6 +420,10 @@ export function useNarrator({
       }
 
       isUnlockingRef.current = false;
+      if (rafRef.current !== null) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       audio.pause();
       audio.src = dataUrl;
       audio.volume = 1;
@@ -404,24 +434,64 @@ export function useNarrator({
       setVoiceEngine('gemini');
       setIsSpeaking(true);
 
-      audio.ontimeupdate = () => {
-        if (cancelled) return;
+      let lastReportedRatio = -1;
+      const syncAudioRatio = () => {
         if (audio.duration && Number.isFinite(audio.duration) && audio.duration > 0) {
-          setProgress(Math.min(1, audio.currentTime / audio.duration));
+          const ratio = Math.min(1, audio.currentTime / audio.duration);
+          if (Math.abs(ratio - lastReportedRatio) >= 0.004) {
+            lastReportedRatio = ratio;
+            setProgress(ratio);
+          }
         }
+      };
+
+      const trackAudioFrame = () => {
+        if (cancelled) return;
+        syncAudioRatio();
+        if (!audio.paused && !audio.ended) {
+          rafRef.current = window.requestAnimationFrame(trackAudioFrame);
+        } else {
+          rafRef.current = null;
+        }
+      };
+
+      audio.onplaying = () => {
+        if (cancelled) return;
+        if (rafRef.current !== null) {
+          window.cancelAnimationFrame(rafRef.current);
+        }
+        trackAudioFrame();
+      };
+      audio.ontimeupdate = () => {
+        if (!cancelled) syncAudioRatio();
       };
       audio.onended = () => {
         if (cancelled) return;
+        if (rafRef.current !== null) {
+          window.cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
         setProgress(1);
         setIsSpeaking(false);
-        scheduleNext(1700);
+        scheduleNext(1900);
       };
       audio.onerror = () => {
+        if (rafRef.current !== null) {
+          window.cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
         if (!cancelled) speakWithBrowser();
       };
-      audio.play().catch(() => {
-        if (!cancelled) speakWithBrowser();
-      });
+      audio
+        .play()
+        .then(() => {
+          if (!cancelled && rafRef.current === null && !audio.paused && !audio.ended) {
+            trackAudioFrame();
+          }
+        })
+        .catch(() => {
+          if (!cancelled) speakWithBrowser();
+        });
 
       // Quietly prefetch next scene audio when quota is available
       if (
@@ -440,7 +510,10 @@ export function useNarrator({
 
     const runNarration = async () => {
       if (muted) {
-        const estimatedMs = Math.round(fallbackDurationMs / playbackRate);
+        const estimatedMs = Math.max(
+          Math.round(fallbackDurationMs / playbackRate),
+          estimateNarrationDurationMs(text, playbackRate * 0.9)
+        );
         setIsSpeaking(false);
         startTimerProgress(estimatedMs);
         scheduleNext(estimatedMs);

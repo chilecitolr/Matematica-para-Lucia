@@ -41,20 +41,40 @@ interface ColorMathProps {
   highlightTarget?: SpotlightTarget;
 }
 
-export const ColorMath: React.FC<ColorMathProps> = ({
-  expr,
-  size = 'lg',
-  className = '',
-  highlightTarget = 'none',
-}) => {
-  const sizeClasses: Record<NonNullable<ColorMathProps['size']>, string> = {
-    sm: 'text-sm sm:text-base',
-    md: 'text-base sm:text-lg md:text-xl',
-    lg: 'text-lg sm:text-xl md:text-2xl',
-    xl: 'text-xl sm:text-2xl md:text-4xl',
-    '2xl': 'text-2xl sm:text-3xl md:text-5xl',
-  };
+type MathSegment =
+  | { kind: 'text'; value: string }
+  | { kind: 'frac'; num: string; den: string };
 
+function splitMathSegments(expr: string): MathSegment[] {
+  const fracRegex =
+    /\(([^()]+)\)\s*\/\s*\(([^()]+)\)|\(([^()]+)\)\s*\/\s*([0-9a-zA-Z⁰¹²³⁴⁵⁶⁷⁸⁹]+)|([0-9a-zA-Z⁰¹²³⁴⁵⁶⁷⁸⁹]+)\/([0-9a-zA-Z⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g;
+
+  const segments: MathSegment[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = fracRegex.exec(expr)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ kind: 'text', value: expr.slice(lastIndex, match.index) });
+    }
+    const num = match[1] ?? match[3] ?? match[5];
+    const den = match[2] ?? match[4] ?? match[6];
+    segments.push({ kind: 'frac', num, den });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < expr.length) {
+    segments.push({ kind: 'text', value: expr.slice(lastIndex) });
+  }
+
+  return segments;
+}
+
+const ColorMathTokens: React.FC<{
+  expr: string;
+  highlightTarget: SpotlightTarget;
+  inFraction?: boolean;
+}> = ({ expr, highlightTarget, inFraction = false }) => {
   const tokens: Array<{ value: string; kind: 'num' | 'var' | 'exp' | 'neg' | 'op' | 'word' }> = [];
   let i = 0;
 
@@ -114,11 +134,9 @@ export const ColorMath: React.FC<ColorMathProps> = ({
   };
 
   return (
-    <span
-      className={`font-math inline-flex flex-wrap items-baseline tracking-wide leading-relaxed ${sizeClasses[size]} ${className}`}
-    >
+    <>
       {tokens.map((tok, idx) => {
-        const hi = isHighlighted(tok.kind);
+        const hi = !inFraction && isHighlighted(tok.kind);
 
         if (tok.kind === 'num') {
           return (
@@ -152,7 +170,7 @@ export const ColorMath: React.FC<ColorMathProps> = ({
           return (
             <sup
               key={idx}
-              className={`inline-block text-orange-600 font-bold text-[0.65em] -top-[0.48em] ml-[1px] mr-[2px] transition-transform duration-300 ${
+              className={`inline-block text-orange-600 font-bold text-[0.65em] -translate-y-[0.45em] ml-[1px] mr-[2px] transition-transform duration-300 ${
                 hi
                   ? 'scale-150 bg-orange-100 ring-2 ring-orange-500 rounded px-1 mx-1'
                   : ''
@@ -186,6 +204,78 @@ export const ColorMath: React.FC<ColorMathProps> = ({
         return (
           <span key={idx} className="text-slate-600 whitespace-pre">
             {tok.value}
+          </span>
+        );
+      })}
+    </>
+  );
+};
+
+export const ColorMath: React.FC<ColorMathProps> = ({
+  expr,
+  size = 'lg',
+  className = '',
+  highlightTarget = 'none',
+}) => {
+  const sizeClasses: Record<NonNullable<ColorMathProps['size']>, string> = {
+    sm: 'text-sm sm:text-base',
+    md: 'text-base sm:text-lg md:text-xl',
+    lg: 'text-lg sm:text-xl md:text-2xl',
+    xl: 'text-xl sm:text-2xl md:text-4xl',
+    '2xl': 'text-2xl sm:text-3xl md:text-5xl',
+  };
+
+  const segments = splitMathSegments(expr);
+  const hiNum = highlightTarget === 'numerador' || highlightTarget === 'num';
+  const hiDen = highlightTarget === 'denominador' || highlightTarget === 'num';
+
+  return (
+    <span
+      className={`font-math inline-flex flex-wrap items-center tracking-wide leading-relaxed ${sizeClasses[size]} ${className}`}
+    >
+      {segments.map((seg, idx) => {
+        if (seg.kind === 'text') {
+          return (
+            <ColorMathTokens
+              key={idx}
+              expr={seg.value}
+              highlightTarget={highlightTarget}
+            />
+          );
+        }
+
+        return (
+          <span
+            key={idx}
+            className="inline-flex flex-col items-center justify-center align-middle mx-1 leading-none"
+          >
+            <span
+              className={`px-1.5 pb-[2px] text-[0.8em] leading-tight transition-transform duration-300 ${
+                hiNum
+                  ? 'scale-115 bg-blue-100 ring-2 ring-blue-400 rounded-md py-0.5 mb-0.5'
+                  : ''
+              }`}
+            >
+              <ColorMathTokens
+                expr={seg.num}
+                highlightTarget={highlightTarget}
+                inFraction
+              />
+            </span>
+            <span className="w-full min-w-[1.3em] h-[2px] bg-slate-800 rounded-full" />
+            <span
+              className={`px-1.5 pt-[3px] text-[0.8em] leading-tight transition-transform duration-300 ${
+                hiDen
+                  ? 'scale-115 bg-blue-100 ring-2 ring-blue-400 rounded-md py-0.5 mt-0.5'
+                  : ''
+              }`}
+            >
+              <ColorMathTokens
+                expr={seg.den}
+                highlightTarget={highlightTarget}
+                inFraction
+              />
+            </span>
           </span>
         );
       })}

@@ -51,6 +51,63 @@ export function detectSentenceSpotlight(sentence: string): SpotlightTarget {
   return 'none';
 }
 
+const ENGLISH_WORD_RE =
+  /\b(sunny|cloudy|rainy|windy|stormy|snowy|weather|tornado|flood|wildfire|volcano|was|were|wasn['’]t|weren['’]t|yesterday|last|played|walked|visited|watched|went|ate|saw|had|bought|did|didn['’]t|monday|friday|july|night|o['’]clock|today|happy|tired|school|pizza|football|home|she|they|you|we|he|it)\b/gi;
+
+export function estimateSpokenWeight(text: string, isVeryEnd = false): number {
+  const clean = text.trim();
+  if (!clean) return 8;
+  let weight = Math.max(8, clean.length);
+
+  // Bilingual switches in Spanish sentences take slightly more articulation time
+  const englishMatches = clean.match(ENGLISH_WORD_RE);
+  if (englishMatches) {
+    for (const m of englishMatches) {
+      weight += m.length * 0.45 + 1.5;
+    }
+  }
+
+  // Punctuation pauses (TTS voices pause significantly at periods/exclamations/colons)
+  if (!isVeryEnd) {
+    if (/[.!?]$/.test(clean)) weight += 9;
+    else if (/:$/.test(clean)) weight += 5;
+    else if (/[,;]$/.test(clean)) weight += 4;
+  } else {
+    weight += 2;
+  }
+
+  return weight;
+}
+
+export function estimateNarrationDurationMs(text: string, rate = 1): number {
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (sentences.length === 0) return 10000;
+
+  let totalWeight = 0;
+  sentences.forEach((s, idx) => {
+    totalWeight += estimateSpokenWeight(s, idx === sentences.length - 1);
+  });
+
+  // ~66ms per weighted unit at 1.0x closely matches calm Spanish + English speech
+  const safeRate = Math.max(0.65, rate);
+  return Math.max(4000, Math.round((totalWeight * 66) / safeRate));
+}
+
+/**
+ * Accounts for ~2% WAV lead-in silence and ~4% trailing decay so
+ * visual highlights align tightly with spoken words.
+ */
+export function mapAudioProgressToSpeech(rawProgress: number): number {
+  const lead = 0.02;
+  const tail = 0.04;
+  if (rawProgress <= lead) return 0;
+  if (rawProgress >= 1 - tail) return 0.9999;
+  return (rawProgress - lead) / (1 - lead - tail);
+}
+
 export function splitNarrationCues(narration: string): NarrationCueSegment[] {
   const rawSentences = narration
     .split(/(?<=[.!?])\s+/)
@@ -69,14 +126,17 @@ export function splitNarrationCues(narration: string): NarrationCueSegment[] {
     ];
   }
 
-  const totalChars = rawSentences.reduce((acc, s) => acc + Math.max(12, s.length), 0);
+  const weights = rawSentences.map((s, idx) =>
+    estimateSpokenWeight(s, idx === rawSentences.length - 1)
+  );
+  const totalWeight = weights.reduce((acc, w) => acc + w, 0);
   let cursor = 0;
 
-  return rawSentences.map((sentence) => {
-    const weight = Math.max(12, sentence.length);
-    const startRatio = cursor / totalChars;
+  return rawSentences.map((sentence, idx) => {
+    const weight = weights[idx];
+    const startRatio = cursor / totalWeight;
     cursor += weight;
-    const endRatio = cursor / totalChars;
+    const endRatio = cursor / totalWeight;
     const target = detectSentenceSpotlight(sentence);
     return {
       text: sentence,
@@ -98,7 +158,7 @@ export function getActiveCueAtProgress(
       cue: { text: '', target: 'none', startRatio: 0, endRatio: 1, label: '' },
     };
   }
-  const p = Math.max(0, Math.min(0.9999, progress));
+  const p = Math.max(0, Math.min(0.9999, mapAudioProgressToSpeech(progress)));
   const idx = cues.findIndex((c) => p >= c.startRatio && p < c.endRatio);
   const resolved = idx >= 0 ? idx : cues.length - 1;
   return { index: resolved, cue: cues[resolved] };
@@ -123,8 +183,8 @@ export function normalizeSpokenText(input: string): string {
 
 /**
  * Splits narration into fine spoken clauses (sentences + commas + colons)
- * synchronized with playback progress so individual cards or quiz prompts
- * light up right when the narrator mentions them (e.g. "Hay muchas nubes,").
+ * synchronized with spoken prosody weights so individual cards or quiz prompts
+ * light up right when the narrator speaks them (e.g. "Hay muchas nubes,").
  */
 export function splitSpokenClauses(narration: string): SpokenClauseSegment[] {
   const sentences = narration
@@ -136,24 +196,36 @@ export function splitSpokenClauses(narration: string): SpokenClauseSegment[] {
     return [{ text: narration, sentenceIndex: 0, startRatio: 0, endRatio: 1 }];
   }
 
-  const totalSentenceWeight = sentences.reduce(
-    (acc, s) => acc + Math.max(12, s.length),
-    0
+  const sentWeights = sentences.map((s, idx) =>
+    estimateSpokenWeight(s, idx === sentences.length - 1)
   );
+  const totalSentenceWeight = sentWeights.reduce((acc, w) => acc + w, 0);
 
   const clauses: SpokenClauseSegment[] = [];
   let sentCursor = 0;
 
   sentences.forEach((sentence, sentenceIndex) => {
-    const sentWeight = Math.max(12, sentence.length);
+    const sentWeight = sentWeights[sentenceIndex];
     const sentStart = sentCursor / totalSentenceWeight;
     sentCursor += sentWeight;
     const sentEnd = sentCursor / totalSentenceWeight;
 
-    const parts = sentence
+    const rawParts = sentence
       .split(/(?<=[,;:])\s+/)
       .map((p) => p.trim())
       .filter(Boolean);
+
+    const parts: string[] = [];
+    for (const raw of rawParts) {
+      const wordsCount = raw.split(/\s+/).filter(Boolean).length;
+      const isTinySingleWord = wordsCount === 1 && raw.length <= 5;
+      const prev = parts[parts.length - 1];
+      if (isTinySingleWord && prev && prev.length < 48) {
+        parts[parts.length - 1] = `${prev} ${raw}`;
+      } else {
+        parts.push(raw);
+      }
+    }
 
     if (parts.length <= 1) {
       clauses.push({
@@ -165,12 +237,16 @@ export function splitSpokenClauses(narration: string): SpokenClauseSegment[] {
       return;
     }
 
-    const totalPartWeight = parts.reduce((acc, p) => acc + Math.max(8, p.length), 0);
+    const isVeryLastSent = sentenceIndex === sentences.length - 1;
+    const partWeights = parts.map((p, pIdx) =>
+      estimateSpokenWeight(p, isVeryLastSent && pIdx === parts.length - 1)
+    );
+    const totalPartWeight = partWeights.reduce((acc, w) => acc + w, 0);
     let partCursor = 0;
     const sentSpan = sentEnd - sentStart;
 
-    for (const part of parts) {
-      const pw = Math.max(8, part.length);
+    parts.forEach((part, pIdx) => {
+      const pw = partWeights[pIdx];
       const startRatio = sentStart + (partCursor / totalPartWeight) * sentSpan;
       partCursor += pw;
       const endRatio = sentStart + (partCursor / totalPartWeight) * sentSpan;
@@ -180,7 +256,7 @@ export function splitSpokenClauses(narration: string): SpokenClauseSegment[] {
         startRatio,
         endRatio,
       });
-    }
+    });
   });
 
   return clauses;
@@ -196,7 +272,7 @@ export function getActiveClauseAtProgress(
       clause: { text: '', sentenceIndex: 0, startRatio: 0, endRatio: 1 },
     };
   }
-  const p = Math.max(0, Math.min(0.9999, progress));
+  const p = Math.max(0, Math.min(0.9999, mapAudioProgressToSpeech(progress)));
   const idx = clauses.findIndex((c) => p >= c.startRatio && p < c.endRatio);
   const resolved = idx >= 0 ? idx : clauses.length - 1;
   return { index: resolved, clause: clauses[resolved] };
