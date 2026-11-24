@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Award,
   BookOpen,
@@ -26,11 +26,15 @@ import {
 } from './data/curriculum';
 import type { Chapter, LessonScene, SubjectId, VideoId } from './types/lesson';
 import { VideoStage } from './components/VideoStage';
-import { useNarrator } from './hooks/useNarrator';
+import { playChapterCelebrationChime, useNarrator } from './hooks/useNarrator';
 import { DownloadCenterModal } from './components/DownloadCenterModal';
 import { FloatingNotepad } from './components/FloatingNotepad';
 import { MultiplicationCheatModal } from './components/MultiplicationCheatModal';
 import { QuickCheckCard } from './components/QuickCheckCard';
+import {
+  ChapterCelebrationConfetti,
+  type ChapterCelebrationEvent,
+} from './components/ChapterCelebrationConfetti';
 import type { SpotlightTarget } from './utils/spotlightCues';
 
 const COMPLETED_SCENES_KEY = 'lucia_completed_scenes_v1';
@@ -223,6 +227,14 @@ export default function App() {
   const [completedSceneIds, setCompletedSceneIds] = useState<string[]>(() =>
     loadCompletedScenes()
   );
+  const [celebrationEvent, setCelebrationEvent] = useState<ChapterCelebrationEvent | null>(null);
+  const [justCelebratedChapterId, setJustCelebratedChapterId] = useState<string | null>(null);
+  const prevCompletedChaptersRef = useRef<Set<string> | null>(null);
+  const celebrationNonceRef = useRef(0);
+
+  const dismissCelebration = useCallback(() => {
+    setCelebrationEvent(null);
+  }, []);
 
   const markSceneCompleted = useCallback((sceneId?: string) => {
     if (!sceneId) return;
@@ -239,6 +251,55 @@ export default function App() {
       return next;
     });
   }, []);
+
+  // Trigger confetti celebration whenever any chapter reaches 100% completion
+  useEffect(() => {
+    const doneSet = new Set(completedSceneIds);
+    const allChapters = [...ALL_CHAPTERS, ...ALL_ENGLISH_CHAPTERS];
+    const completedNow = allChapters.filter(
+      (ch) => ch.scenes.length > 0 && ch.scenes.every((s) => doneSet.has(s.id))
+    );
+    const nowSet = new Set(completedNow.map((ch) => ch.id));
+
+    if (prevCompletedChaptersRef.current === null) {
+      prevCompletedChaptersRef.current = nowSet;
+      return;
+    }
+
+    const newlyCompleted = completedNow.filter(
+      (ch) => !prevCompletedChaptersRef.current!.has(ch.id)
+    );
+    prevCompletedChaptersRef.current = nowSet;
+
+    if (newlyCompleted.length > 0) {
+      const target =
+        newlyCompleted.find((ch) => ch.videoGroupId === activeVideoId) ??
+        newlyCompleted[newlyCompleted.length - 1];
+      const nextSubject: SubjectId = target.videoGroupId.startsWith('english-')
+        ? 'ingles'
+        : 'matematica';
+      celebrationNonceRef.current += 1;
+      setCelebrationEvent({
+        nonce: celebrationNonceRef.current,
+        chapterId: target.id,
+        chapterNumber: target.number,
+        chapterTitle: target.title,
+        subject: nextSubject,
+      });
+      setJustCelebratedChapterId(target.id);
+      if (!muted) {
+        playChapterCelebrationChime();
+      }
+    }
+  }, [completedSceneIds, activeVideoId, muted]);
+
+  useEffect(() => {
+    if (!justCelebratedChapterId) return;
+    const timer = window.setTimeout(() => {
+      setJustCelebratedChapterId(null);
+    }, 4500);
+    return () => window.clearTimeout(timer);
+  }, [justCelebratedChapterId]);
 
   const subjectVideos = useMemo(
     () => getVideosForSubject(subject),
@@ -904,10 +965,21 @@ export default function App() {
                     completedSceneIds.includes(f.scene.id)
                   ).length;
                   const pal = CHAPTER_PALETTE[chIdx % CHAPTER_PALETTE.length];
+                  const isChapterJustCelebrated = justCelebratedChapterId === chapter.id;
+                  const isChapterDone =
+                    chapterScenes.length > 0 && chapterCompletedCount === chapterScenes.length;
                   return (
                     <div
                       key={chapter.id}
-                      className={`space-y-2.5 p-3.5 rounded-xl border ${pal.card}`}
+                      className={`space-y-2.5 p-3.5 rounded-xl border transition-shadow ${
+                        pal.card
+                      } ${
+                        isChapterJustCelebrated
+                          ? 'ring-2 ring-emerald-500 shadow-md'
+                          : isChapterDone
+                            ? 'ring-1 ring-emerald-400/80'
+                            : ''
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2.5">
                         <div className="min-w-0">
@@ -1128,6 +1200,11 @@ export default function App() {
         subject={subject}
         initialVideoId={downloadTargetVideoId}
         onClose={() => setDownloadModalOpen(false)}
+      />
+
+      <ChapterCelebrationConfetti
+        event={celebrationEvent}
+        onDismiss={dismissCelebration}
       />
     </div>
   );
