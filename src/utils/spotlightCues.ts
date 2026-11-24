@@ -296,3 +296,177 @@ export function doesSpokenTextMatchKeywords(
   }
   return false;
 }
+
+export interface SpokenMathFocus {
+  target: SpotlightTarget;
+  terms: string[];
+  stepLabel?: string;
+}
+
+const NUM_WORDS: Record<string, string> = {
+  cero: '0',
+  un: '1',
+  uno: '1',
+  una: '1',
+  dos: '2',
+  tres: '3',
+  cuatro: '4',
+  cinco: '5',
+  seis: '6',
+  siete: '7',
+  ocho: '8',
+  nueve: '9',
+  diez: '10',
+  once: '11',
+  doce: '12',
+  trece: '13',
+  catorce: '14',
+  quince: '15',
+  dieciseis: '16',
+  dieciocho: '18',
+  veinte: '20',
+  veintiun: '21',
+  veintiuno: '21',
+  veintidos: '22',
+  veintitres: '23',
+  veinticuatro: '24',
+  veinticinco: '25',
+  veintisiete: '27',
+  veintiocho: '28',
+  treinta: '30',
+  'treinta y seis': '36',
+  cuarenta: '40',
+  'cuarenta y cinco': '45',
+  cincuenta: '50',
+  sesenta: '60',
+  'sesenta y tres': '63',
+  ochenta: '80',
+  'ochenta y uno': '81',
+  cien: '100',
+};
+
+const DEN_WORDS: Record<string, string> = {
+  medio: '2',
+  medios: '2',
+  tercio: '3',
+  tercios: '3',
+  cuarto: '4',
+  cuartos: '4',
+  quinto: '5',
+  quintos: '5',
+  sexto: '6',
+  sextos: '6',
+  septimo: '7',
+  septimos: '7',
+  octavo: '8',
+  octavos: '8',
+  noveno: '9',
+  novenos: '9',
+  decimo: '10',
+  decimos: '10',
+  doceavo: '12',
+  doceavos: '12',
+  dieciseisavo: '16',
+  dieciseisavos: '16',
+  dieciochoavo: '18',
+  dieciochoavos: '18',
+  veinteavo: '20',
+  veinteavos: '20',
+  veinticuatroavo: '24',
+  veinticuatroavos: '24',
+  veintiochoavo: '28',
+  veintiochoavos: '28',
+  'treinta y seisavo': '36',
+  'treinta y seisavos': '36',
+};
+
+export function extractSpokenMathFocus(spokenText: string): SpokenMathFocus {
+  if (!spokenText.trim()) {
+    return { target: 'none', terms: [] };
+  }
+
+  const target = detectSentenceSpotlight(spokenText);
+  const norm = normalizeSpokenText(spokenText);
+  const terms = new Set<string>();
+
+  // 1. Direct digit fractions like "7/6"
+  const directFracs = norm.match(/\b\d+\/\d+\b/g);
+  if (directFracs) {
+    for (const f of directFracs) terms.add(f);
+  }
+
+  // 2. Spoken Spanish fractions like "siete sextos", "un tercio", "diez dieciseisavos"
+  const numKeys = Object.keys(NUM_WORDS).sort((a, b) => b.length - a.length);
+  const denKeys = Object.keys(DEN_WORDS).sort((a, b) => b.length - a.length);
+  const fracPattern = new RegExp(
+    `\\b(${numKeys.join('|')})\\s+(${denKeys.join('|')})\\b`,
+    'g'
+  );
+  let fm: RegExpExecArray | null;
+  while ((fm = fracPattern.exec(norm)) !== null) {
+    const n = NUM_WORDS[fm[1]];
+    const d = DEN_WORDS[fm[2]];
+    if (n && d) {
+      terms.add(`${n}/${d}`);
+    }
+  }
+
+  // 3. Spoken signs & operations
+  if (/\b(menos|negativo|negativos|negativa|resta|restamos|signo menos)\b/.test(norm)) {
+    terms.add('−');
+  }
+  if (/\b(mas|suma|sumamos|signo mas)\b/.test(norm)) {
+    terms.add('+');
+  }
+  if (/\b(por|multiplicamos|multiplica|multiplicacion)\b/.test(norm)) {
+    terms.add('×');
+  }
+  if (/\b(dividido|divide|dividimos|division)\b/.test(norm)) {
+    terms.add('÷');
+  }
+  if (/\b(igual|da|es igual)\b/.test(norm)) {
+    terms.add('=');
+  }
+
+  // 4. Standalone numbers (digits or words)
+  const digitMatches = norm.match(/\b\d+\b/g);
+  if (digitMatches) {
+    for (const dm of digitMatches) terms.add(dm);
+  }
+  const numWordRegex = new RegExp(`\\b(${numKeys.join('|')})\\b`, 'g');
+  let nm: RegExpExecArray | null;
+  while ((nm = numWordRegex.exec(norm)) !== null) {
+    const val = NUM_WORDS[nm[1]];
+    if (val) terms.add(val);
+  }
+
+  // 5. Variables mentioned explicitly
+  for (const letter of ['x', 'y', 'a', 'b', 'm', 'n', 'p', 'q', 'r']) {
+    if (new RegExp(`\\b(la ${letter}|${letter} al|${letter} por)\\b`).test(norm)) {
+      terms.add(letter);
+    }
+  }
+
+  // 6. Step / Exercise row hints for steps-board
+  let stepLabel: string | undefined;
+  if (/\bpaso (uno|1)\b/.test(norm)) stepLabel = 'paso 1';
+  else if (/\bpaso (dos|2)\b/.test(norm)) stepLabel = 'paso 2';
+  else if (/\bpaso (tres|3)\b/.test(norm)) stepLabel = 'paso 3';
+  else if (/\bpaso (cuatro|4)\b/.test(norm)) stepLabel = 'paso 4';
+  else if (/\bresultado\b/.test(norm)) stepLabel = 'resultado';
+  else if (/\bbloque (uno|1)\b/.test(norm)) stepLabel = 'bloque 1';
+  else if (/\bbloque (dos|2)\b/.test(norm)) stepLabel = 'bloque 2';
+  else if (/\ben el b\b/.test(norm)) stepLabel = 'b)';
+  else if (/\ben el c\b/.test(norm)) stepLabel = 'c)';
+  else if (/\ben el d\b/.test(norm)) stepLabel = 'd)';
+  else if (/\ben el e\b/.test(norm)) stepLabel = 'e)';
+  else if (/\ben el f\b/.test(norm)) stepLabel = 'f)';
+  else if (/\bejercicio\b/.test(norm)) stepLabel = 'ejercicio';
+
+  return {
+    target,
+    terms: Array.from(terms),
+    stepLabel,
+  };
+}
+

@@ -459,9 +459,16 @@ function renderSingleFrame(
   }
 ): string {
   const spotlight = opts.spotlight || 'none';
-  const keyLines = wrapText(scene.keyMessage, 74).slice(0, 2);
-  const subtitleSource = opts.activeSentence || scene.narration;
-  const subLines = wrapText(subtitleSource, 90).slice(0, 3);
+  const isEnglish = chapter.videoGroupId.startsWith('english-');
+  const stageFont = isEnglish
+    ? 'Verdana, Arial, Noto Sans, sans-serif'
+    : 'Noto Sans, sans-serif';
+  const formatStageText = (t: string) =>
+    isEnglish ? t.toLocaleUpperCase('es-AR') : t;
+
+  const keyLines = wrapText(formatStageText(scene.keyMessage), isEnglish ? 64 : 74).slice(0, 2);
+  const subtitleSource = formatStageText(opts.activeSentence || scene.narration);
+  const subLines = wrapText(subtitleSource, isEnglish ? 78 : 90).slice(0, 3);
 
   const diagramContent = renderDiagramSvg(scene, { ...opts, spotlight });
 
@@ -475,27 +482,27 @@ function renderSingleFrame(
   <rect x="36" y="60" width="1208" height="18" fill="#F1F5F9"/>
   <line x1="36" y1="78" x2="1244" y2="78" stroke="#E2E8F0" stroke-width="1.5"/>
 
-  <text x="64" y="57" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#0F172A">
-    Capítulo ${chapter.number}. ${esc(chapter.title)}   ·   ${esc(chapter.activityRef)}
+  <text x="64" y="57" font-family="${stageFont}" font-size="${isEnglish ? 16 : 18}" font-weight="700" fill="#0F172A">
+    ${formatStageText(`${isEnglish ? 'Tema' : 'Capítulo'} ${chapter.number}. ${chapter.title}   ·   ${chapter.activityRef}`)}
   </text>
-  <text x="1216" y="57" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#1D4ED8">
-    ${esc(PHASE_LABELS[scene.phase])}
+  <text x="1216" y="57" text-anchor="end" font-family="${stageFont}" font-size="${isEnglish ? 16 : 18}" font-weight="700" fill="#1D4ED8">
+    ${esc(formatStageText(PHASE_LABELS[scene.phase]))}
   </text>
 
   <!-- Headline & Key Message -->
-  <text x="68" y="124" font-family="Noto Sans, sans-serif" font-size="31" font-weight="700" fill="#0F172A">
-    ${esc(scene.headline)}
+  <text x="68" y="124" font-family="${stageFont}" font-size="${isEnglish ? 28 : 31}" font-weight="700" fill="#0F172A">
+    ${esc(formatStageText(scene.headline))}
   </text>
   ${
     opts.spotlightLabel
       ? `<rect x="820" y="96" width="396" height="36" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.5"/>
-         <text x="1018" y="120" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="16" font-weight="700" fill="#0F172A">${esc(opts.spotlightLabel)}</text>`
+         <text x="1018" y="120" text-anchor="middle" font-family="${stageFont}" font-size="15" font-weight="700" fill="#0F172A">${esc(formatStageText(opts.spotlightLabel))}</text>`
       : ''
   }
   ${keyLines
     .map(
       (line, idx) =>
-        `<text x="68" y="${158 + idx * 27}" font-family="Noto Sans, sans-serif" font-size="20" fill="#334155">${esc(line)}</text>`
+        `<text x="68" y="${158 + idx * 27}" font-family="${stageFont}" font-size="${isEnglish ? 18 : 20}" fill="#334155">${esc(line)}</text>`
     )
     .join('\n  ')}
 
@@ -507,18 +514,18 @@ function renderSingleFrame(
   <!-- Mini 4-Color Legend Bar -->
   <g transform="translate(68, 560)">
     <rect x="0" y="0" width="14" height="14" rx="3" fill="#1D4ED8"/>
-    <text x="22" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="${spotlight === 'num' ? '700' : '600'}" fill="${spotlight === 'num' ? '#1D4ED8' : '#475569'}">Números</text>
+    <text x="22" y="12" font-family="${stageFont}" font-size="14" font-weight="${spotlight === 'num' ? '700' : '600'}" fill="${spotlight === 'num' ? '#1D4ED8' : '#475569'}">${isEnglish ? 'PERSONA' : 'Números'}</text>
 
-    <rect x="112" y="0" width="14" height="14" rx="3" fill="#15803D"/>
-    <text x="134" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="${spotlight === 'var' ? '700' : '600'}" fill="${spotlight === 'var' ? '#15803D' : '#475569'}">Letras</text>
+    <rect x="118" y="0" width="14" height="14" rx="3" fill="#15803D"/>
+    <text x="140" y="12" font-family="${stageFont}" font-size="14" font-weight="${spotlight === 'var' ? '700' : '600'}" fill="${spotlight === 'var' ? '#15803D' : '#475569'}">${isEnglish ? 'VERBO' : 'Letras'}</text>
 
-    <rect x="208" y="0" width="14" height="14" rx="3" fill="#C2410C"/>
-    <text x="230" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="${spotlight === 'exp' ? '700' : '600'}" fill="${spotlight === 'exp' ? '#C2410C' : '#475569'}">Exponentes</text>
+    <rect x="218" y="0" width="14" height="14" rx="3" fill="#C2410C"/>
+    <text x="240" y="12" font-family="${stageFont}" font-size="14" font-weight="${spotlight === 'exp' ? '700' : '600'}" fill="${spotlight === 'exp' ? '#C2410C' : '#475569'}">${isEnglish ? 'TIEMPO / DID' : 'Exponentes'}</text>
 
-    <rect x="342" y="0" width="14" height="14" rx="3" fill="#DC2626"/>
-    <text x="364" y="12" font-family="Noto Sans, sans-serif" font-size="14" font-weight="${spotlight === 'neg' ? '700' : '600'}" fill="${spotlight === 'neg' ? '#DC2626' : '#475569'}">Signos (−)</text>
+    <rect x="358" y="0" width="14" height="14" rx="3" fill="#DC2626"/>
+    <text x="380" y="12" font-family="${stageFont}" font-size="14" font-weight="${spotlight === 'neg' ? '700' : '600'}" fill="${spotlight === 'neg' ? '#DC2626' : '#475569'}">${isEnglish ? 'NOT / N’T' : 'Signos (−)'}</text>
 
-    <text x="1144" y="12" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="14" font-weight="600" fill="#64748B">Adaptado para Lucía · Con amor, su papá!!</text>
+    <text x="1144" y="12" text-anchor="end" font-family="${stageFont}" font-size="14" font-weight="600" fill="#64748B">Adaptado para Lucía · Con amor, su papá!!</text>
   </g>
 
   <!-- Subtitle Strip -->
@@ -526,7 +533,7 @@ function renderSingleFrame(
   ${subLines
     .map(
       (line, idx) =>
-        `<text x="640" y="${646 + idx * 26}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="19" fill="#F8FAFC">${esc(line)}</text>`
+        `<text x="640" y="${646 + idx * 26}" text-anchor="middle" font-family="${stageFont}" font-size="${isEnglish ? 18 : 19}" font-weight="${isEnglish ? 600 : 400}" fill="#F8FAFC">${esc(line)}</text>`
     )
     .join('\n  ')}
 </svg>`;
@@ -1058,6 +1065,7 @@ function renderDiagramSvg(
     }
 
     case 'english-cards': {
+      const enFont = 'Verdana, Arial, Noto Sans, sans-serif';
       const cols = d.layout === '3col' ? 3 : d.layout === 'rows' ? 1 : 2;
       const startY = d.banner ? 248 : 196;
       const availH = (d.footerTip ? 488 : 525) - startY;
@@ -1078,7 +1086,7 @@ function renderDiagramSvg(
       const bannerSvg = d.banner
         ? `
           <rect x="90" y="190" width="1100" height="44" rx="12" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-          <text x="640" y="219" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#0F172A">${esc(d.banner)}</text>
+          <text x="640" y="219" text-anchor="middle" font-family="${enFont}" font-size="20" font-weight="700" fill="#0F172A">${esc(d.banner.toLocaleUpperCase('es-AR'))}</text>
         `
         : '';
 
@@ -1106,15 +1114,15 @@ function renderDiagramSvg(
           return `
             <g${opacityAttr}>
               <rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
-              <text x="${textX}" y="${titleY}" font-family="Noto Sans, sans-serif" font-size="${cardH > 95 ? 24 : 20}" font-weight="700" fill="#0F172A">${esc(c.title)}</text>
+              <text x="${textX}" y="${titleY}" font-family="${enFont}" font-size="${cardH > 95 ? 21 : 18}" font-weight="700" fill="#0F172A">${esc(c.title.toLocaleUpperCase('es-AR'))}</text>
               ${
                 c.subtitle
-                  ? `<text x="${textX}" y="${titleY + 26}" font-family="Noto Sans, sans-serif" font-size="18" font-weight="700" fill="#1E3A8A">${esc(c.subtitle)}</text>`
+                  ? `<text x="${textX}" y="${titleY + 26}" font-family="${enFont}" font-size="16" font-weight="700" fill="#1E3A8A">${esc(c.subtitle.toLocaleUpperCase('es-AR'))}</text>`
                   : ''
               }
               ${
                 c.meaning
-                  ? `<text x="${textX}" y="${titleY + (c.subtitle ? 52 : 28)}" font-family="Noto Sans, sans-serif" font-size="18" font-weight="600" fill="#334155">${esc(c.meaning)}</text>`
+                  ? `<text x="${textX}" y="${titleY + (c.subtitle ? 52 : 28)}" font-family="${enFont}" font-size="16" font-weight="600" fill="#334155">${esc(c.meaning.toLocaleUpperCase('es-AR'))}</text>`
                   : ''
               }
             </g>
@@ -1123,13 +1131,14 @@ function renderDiagramSvg(
         .join('');
 
       const footerSvg = d.footerTip
-        ? `<text x="640" y="520" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="19" font-weight="700" fill="#047857">${esc(d.footerTip)}</text>`
+        ? `<text x="640" y="520" text-anchor="middle" font-family="${enFont}" font-size="17" font-weight="700" fill="#047857">${esc(d.footerTip.toLocaleUpperCase('es-AR'))}</text>`
         : '';
 
       return `${bannerSvg}${cardsSvg}${footerSvg}`;
     }
 
     case 'english-quiz': {
+      const enFont = 'Verdana, Arial, Noto Sans, sans-serif';
       const revealed = Boolean(opts.practiceReveal);
       const cols = d.items.length >= 6 ? 3 : 2;
       const rows = Math.ceil(d.items.length / cols);
@@ -1153,29 +1162,29 @@ function renderDiagramSvg(
           const stroke = revealed ? '#34D399' : isHit ? '#D97706' : '#CBD5E1';
           const sw = isHit ? 4 : 2;
           const opacityAttr = anyMatched && !isHit ? ' opacity="0.62"' : '';
-          const optsText = revealed ? `✓ ${it.correctOption}` : it.options.join('   /   ');
+          const optsText = (revealed ? `✓ ${it.correctOption}` : it.options.join('   /   ')).toLocaleUpperCase('es-AR');
 
           return `
             <g${opacityAttr}>
               <rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
-              <text x="${x + 22}" y="${y + 40}" font-family="Noto Sans, sans-serif" font-size="22" font-weight="700" fill="#0F172A">${esc(it.prompt)}</text>
+              <text x="${x + 22}" y="${y + 40}" font-family="${enFont}" font-size="19" font-weight="700" fill="#0F172A">${esc(it.prompt.toLocaleUpperCase('es-AR'))}</text>
               ${
                 it.subLabel
-                  ? `<text x="${x + 22}" y="${y + 68}" font-family="Noto Sans, sans-serif" font-size="16" fill="#64748B">${esc(it.subLabel)}</text>`
+                  ? `<text x="${x + 22}" y="${y + 68}" font-family="${enFont}" font-size="14" font-weight="600" fill="#64748B">${esc(it.subLabel.toLocaleUpperCase('es-AR'))}</text>`
                   : ''
               }
-              <text x="${x + 22}" y="${y + cardH - 22}" font-family="Noto Sans, sans-serif" font-size="20" font-weight="700" fill="${revealed ? '#047857' : '#1D4ED8'}">${esc(optsText)}</text>
+              <text x="${x + 22}" y="${y + cardH - 22}" font-family="${enFont}" font-size="18" font-weight="700" fill="${revealed ? '#047857' : '#1D4ED8'}">${esc(optsText)}</text>
             </g>
           `;
         })
         .join('');
 
       return `
-        <text x="90" y="216" font-family="Noto Sans, sans-serif" font-size="20" font-weight="700" fill="${revealed ? '#047857' : '#1D4ED8'}">
+        <text x="90" y="216" font-family="${enFont}" font-size="19" font-weight="700" fill="${revealed ? '#047857' : '#1D4ED8'}">
           ${revealed ? 'RESPUESTAS PARA REVISAR JUNTAS' : 'PAUSA PARA PENSAR (10 SEGUNDOS)'}
         </text>
         ${cardsSvg}
-        <text x="640" y="530" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="18" fill="#1E3A8A">Pista: ${esc(d.hint)}</text>
+        <text x="640" y="530" text-anchor="middle" font-family="${enFont}" font-size="17" font-weight="600" fill="#1E3A8A">PISTA: ${esc(d.hint.toLocaleUpperCase('es-AR'))}</text>
       `;
     }
   }

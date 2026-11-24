@@ -19,6 +19,7 @@ import {
   Sparkles,
   Sun,
   Tornado,
+  Trophy,
   Volume2,
   Waves,
   Wind,
@@ -28,6 +29,7 @@ import { ColorMath, FractionBox } from './ColorMath';
 import { playSoftFeedbackTone } from '../hooks/useNarrator';
 import {
   doesSpokenTextMatchKeywords,
+  extractSpokenMathFocus,
   getActiveClauseAtProgress,
   getActiveCueAtProgress,
   splitNarrationCues,
@@ -58,6 +60,7 @@ interface VideoStageProps {
   narrationProgress: number;
   manualSpotlight?: SpotlightTarget;
   showSubtitles: boolean;
+  onPracticeSolved?: (sceneId: string) => void;
 }
 
 export const VideoStage: React.FC<VideoStageProps> = ({
@@ -70,6 +73,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
   narrationProgress,
   manualSpotlight = 'none',
   showSubtitles,
+  onPracticeSolved,
 }) => {
   const cues = useMemo(() => splitNarrationCues(scene.narration), [scene.narration]);
   const clauses = useMemo(() => splitSpokenClauses(scene.narration), [scene.narration]);
@@ -84,16 +88,27 @@ export const VideoStage: React.FC<VideoStageProps> = ({
 
   const isNarratingOrProgressed = isPlaying || narrationProgress > 0;
   const activeSpokenText = isNarratingOrProgressed ? activeClause.text : '';
+  const isEnglish = subject === 'ingles';
+
+  const mathFocus = useMemo(
+    () =>
+      !isEnglish && isNarratingOrProgressed && manualSpotlight === 'none'
+        ? extractSpokenMathFocus(activeSpokenText)
+        : { target: 'none' as SpotlightTarget, terms: [] as string[], stepLabel: undefined },
+    [isEnglish, isNarratingOrProgressed, manualSpotlight, activeSpokenText]
+  );
 
   const activeTarget: SpotlightTarget =
     manualSpotlight !== 'none'
       ? manualSpotlight
       : isNarratingOrProgressed
-        ? activeCue.target
+        ? mathFocus.target !== 'none'
+          ? mathFocus.target
+          : activeCue.target
         : 'none';
 
   const getTargetLabel = (t: SpotlightTarget): string => {
-    if (subject === 'ingles') {
+    if (isEnglish) {
       return (
         {
           num: 'Señalando: Persona / Sujeto (Azul)',
@@ -129,18 +144,24 @@ export const VideoStage: React.FC<VideoStageProps> = ({
     manualSpotlight !== 'none'
       ? getTargetLabel(manualSpotlight)
       : activeTarget !== 'none'
-        ? subject === 'ingles'
+        ? isEnglish
           ? getTargetLabel(activeTarget) || activeCue.label
           : activeCue.label
         : '';
 
+  const previewTerms = mathFocus.terms.slice(0, 3);
+
   return (
-    <div className="relative w-full bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+    <div
+      className={`relative w-full bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm ${
+        isEnglish ? 'font-english-accessible' : ''
+      }`}
+    >
       {/* Top Stage Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 bg-slate-50/70">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-slate-600">
           <span className="font-semibold text-slate-900">
-            {subject === 'ingles' ? 'Tema' : 'Capítulo'} {chapterNumber}. {chapterTitle}
+            {isEnglish ? 'Tema' : 'Capítulo'} {chapterNumber}. {chapterTitle}
           </span>
           <span aria-hidden="true">·</span>
           <span>{activityRef}</span>
@@ -164,18 +185,35 @@ export const VideoStage: React.FC<VideoStageProps> = ({
             {/* Scene Title, Key Takeaway & Active Spotlight Indicator */}
             <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
               <div className="space-y-1.5 sm:space-y-2 max-w-3xl">
-                <h2 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+                <h2
+                  className={`font-bold text-slate-900 ${
+                    isEnglish
+                      ? 'text-xl sm:text-2xl md:text-3xl tracking-wider uppercase'
+                      : 'font-display text-xl sm:text-2xl md:text-3xl tracking-tight'
+                  }`}
+                >
                   {scene.headline}
                 </h2>
-                <p className="text-sm sm:text-base md:text-lg text-slate-700 leading-relaxed">
+                <p
+                  className={`text-slate-700 leading-relaxed ${
+                    isEnglish ? 'text-sm sm:text-base md:text-lg tracking-wide uppercase' : 'text-sm sm:text-base md:text-lg'
+                  }`}
+                >
                   {scene.keyMessage}
                 </p>
               </div>
-              {activeLabel && (
-                <div className="text-xs sm:text-sm font-semibold text-slate-800 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 shrink-0">
-                  {activeLabel}
-                </div>
-              )}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {previewTerms.length > 0 && (
+                  <div className="text-xs sm:text-sm font-bold text-amber-950 bg-amber-100 border border-amber-400 rounded-lg px-2.5 py-1.5">
+                    En foco: {previewTerms.join(' · ')}
+                  </div>
+                )}
+                {activeLabel && (
+                  <div className="text-xs sm:text-sm font-semibold text-slate-800 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                    {activeLabel}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Central Visual Diagram Area */}
@@ -183,8 +221,11 @@ export const VideoStage: React.FC<VideoStageProps> = ({
               <DiagramRenderer
                 scene={scene}
                 highlightTarget={activeTarget}
+                activeTerms={mathFocus.terms}
+                activeStepLabel={mathFocus.stepLabel}
                 activeSpokenText={activeSpokenText}
                 hasManualSpotlight={manualSpotlight !== 'none'}
+                onPracticeSolved={onPracticeSolved}
               />
             </div>
 
@@ -202,7 +243,11 @@ export const VideoStage: React.FC<VideoStageProps> = ({
       {/* Calm High-Contrast Subtitle Strip with Live Clause Tracking */}
       {showSubtitles && (
         <div className="px-4 py-3 sm:px-6 sm:py-4 bg-slate-900 text-slate-50 border-t border-slate-800">
-          <p className="text-sm sm:text-base md:text-[17px] leading-relaxed text-center max-w-4xl mx-auto tracking-wide">
+          <p
+            className={`text-sm sm:text-base md:text-[17px] leading-relaxed text-center max-w-4xl mx-auto ${
+              isEnglish ? 'tracking-wider uppercase' : 'tracking-wide'
+            }`}
+          >
             {clauses.map((clause, idx) => {
               const isActive = isNarratingOrProgressed && idx === activeClauseIdx;
               return (
@@ -230,9 +275,20 @@ export const VideoStage: React.FC<VideoStageProps> = ({
 const DiagramRenderer: React.FC<{
   scene: LessonScene;
   highlightTarget: SpotlightTarget;
+  activeTerms: string[];
+  activeStepLabel?: string;
   activeSpokenText: string;
   hasManualSpotlight: boolean;
-}> = ({ scene, highlightTarget, activeSpokenText, hasManualSpotlight }) => {
+  onPracticeSolved?: (sceneId: string) => void;
+}> = ({
+  scene,
+  highlightTarget,
+  activeTerms,
+  activeStepLabel,
+  activeSpokenText,
+  hasManualSpotlight,
+  onPracticeSolved,
+}) => {
   const { diagram } = scene;
 
   switch (diagram.type) {
@@ -300,6 +356,7 @@ const DiagramRenderer: React.FC<{
                 den={String(diagram.total)}
                 size="xl"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
               <div className="space-y-2.5 sm:space-y-3 text-sm sm:text-base">
                 <div
@@ -361,13 +418,23 @@ const DiagramRenderer: React.FC<{
               den={String(diagram.den)}
               size="xl"
               highlightTarget={highlightTarget}
+              activeTerms={activeTerms}
             />
-            <span className="text-3xl font-bold text-slate-700">{diagram.op}</span>
+            <span
+              className={`text-3xl font-bold transition-all duration-300 ${
+                activeTerms.includes(diagram.op === '-' ? '−' : '+')
+                  ? 'scale-135 bg-amber-200 ring-2 ring-amber-500 text-slate-950 rounded-lg px-2'
+                  : 'text-slate-700'
+              }`}
+            >
+              {diagram.op}
+            </span>
             <FractionBox
               num={String(diagram.rightNum)}
               den={String(diagram.den)}
               size="xl"
               highlightTarget={highlightTarget}
+              activeTerms={activeTerms}
             />
             <span className="text-3xl font-bold text-slate-700">=</span>
             <motion.div
@@ -381,6 +448,7 @@ const DiagramRenderer: React.FC<{
                 den={String(diagram.den)}
                 size="xl"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
             </motion.div>
           </div>
@@ -388,20 +456,20 @@ const DiagramRenderer: React.FC<{
           <div className="space-y-3 bg-slate-50 p-5 rounded-xl border border-slate-200">
             <div className="flex items-center gap-4">
               <div className="w-16 flex justify-center shrink-0">
-                <ColorMath expr={`${diagram.leftNum}/${diagram.den}`} size="sm" highlightTarget={highlightTarget} />
+                <ColorMath expr={`${diagram.leftNum}/${diagram.den}`} size="sm" highlightTarget={highlightTarget} activeTerms={activeTerms} />
               </div>
               {renderBar(diagram.leftNum, diagram.den, 'bg-blue-500')}
             </div>
             <div className="flex items-center gap-4">
               <div className="w-16 flex justify-center shrink-0">
-                <ColorMath expr={`${diagram.rightNum}/${diagram.den}`} size="sm" highlightTarget={highlightTarget} />
+                <ColorMath expr={`${diagram.rightNum}/${diagram.den}`} size="sm" highlightTarget={highlightTarget} activeTerms={activeTerms} />
               </div>
               {renderBar(diagram.rightNum, diagram.den, 'bg-sky-400')}
             </div>
             <div className="flex items-center gap-4 pt-2 border-t border-slate-200">
               <div className="w-16 flex items-center justify-center gap-1 shrink-0 text-xs font-bold text-blue-800">
                 <span>Total</span>
-                <ColorMath expr={`${resultNum}/${diagram.den}`} size="sm" highlightTarget={highlightTarget} />
+                <ColorMath expr={`${resultNum}/${diagram.den}`} size="sm" highlightTarget={highlightTarget} activeTerms={activeTerms} />
               </div>
               <div
                 className="grid gap-1 w-full"
@@ -444,6 +512,7 @@ const DiagramRenderer: React.FC<{
                 den={String(ld)}
                 size="xl"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
               {diagram.stage !== 'original' && (
                 <span className="text-sm font-medium text-slate-600">
@@ -452,7 +521,15 @@ const DiagramRenderer: React.FC<{
               )}
             </div>
 
-            <span className="text-3xl font-bold text-slate-700">{diagram.op}</span>
+            <span
+              className={`text-3xl font-bold transition-all duration-300 ${
+                activeTerms.includes(diagram.op === '-' ? '−' : '+')
+                  ? 'scale-135 bg-amber-200 ring-2 ring-amber-500 text-slate-950 rounded-lg px-2'
+                  : 'text-slate-700'
+              }`}
+            >
+              {diagram.op}
+            </span>
 
             <div className="flex flex-col items-center gap-2">
               <FractionBox
@@ -460,6 +537,7 @@ const DiagramRenderer: React.FC<{
                 den={String(rd)}
                 size="xl"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
               {diagram.stage !== 'original' && (
                 <span className="text-sm font-medium text-slate-600">
@@ -481,6 +559,7 @@ const DiagramRenderer: React.FC<{
                     den={String(diagram.commonDen)}
                     size="xl"
                     highlightTarget={highlightTarget}
+                    activeTerms={activeTerms}
                   />
                   <span className="text-3xl font-bold text-slate-700">{diagram.op}</span>
                   <FractionBox
@@ -488,6 +567,7 @@ const DiagramRenderer: React.FC<{
                     den={String(diagram.commonDen)}
                     size="xl"
                     highlightTarget={highlightTarget}
+                    activeTerms={activeTerms}
                   />
                 </motion.div>
               </>
@@ -506,6 +586,7 @@ const DiagramRenderer: React.FC<{
                     den={String(diagram.commonDen)}
                     size="xl"
                     highlightTarget={highlightTarget}
+                    activeTerms={activeTerms}
                   />
                 </motion.div>
               </>
@@ -529,14 +610,23 @@ const DiagramRenderer: React.FC<{
       return (
         <div className="w-full max-w-3xl space-y-6">
           <div className="flex flex-wrap items-center justify-center gap-5 md:gap-7">
-            <ColorMath expr={diagram.first} size="2xl" highlightTarget={highlightTarget} />
-            <span className="text-3xl font-bold text-slate-500">÷</span>
+            <ColorMath expr={diagram.first} size="2xl" highlightTarget={highlightTarget} activeTerms={activeTerms} />
+            <span
+              className={`text-3xl font-bold transition-all duration-300 ${
+                activeTerms.includes('÷')
+                  ? 'scale-135 bg-amber-200 ring-2 ring-amber-500 text-slate-950 rounded-lg px-2'
+                  : 'text-slate-500'
+              }`}
+            >
+              ÷
+            </span>
             <FractionBox
               num={diagram.secondNum}
               den={diagram.secondDen}
               sign="+"
               size="xl"
               highlightTarget={highlightTarget}
+              activeTerms={activeTerms}
             />
 
             <ArrowRight className="w-8 h-8 text-blue-600" />
@@ -549,8 +639,16 @@ const DiagramRenderer: React.FC<{
                 hiFlip ? 'scale-110 ring-4 ring-blue-300 border-blue-500' : 'border-blue-200'
               }`}
             >
-              <ColorMath expr={diagram.first} size="2xl" highlightTarget={highlightTarget} />
-              <span className="text-3xl font-bold text-blue-700">×</span>
+              <ColorMath expr={diagram.first} size="2xl" highlightTarget={highlightTarget} activeTerms={activeTerms} />
+              <span
+                className={`text-3xl font-bold transition-all duration-300 ${
+                  activeTerms.includes('×')
+                    ? 'scale-135 bg-amber-200 ring-2 ring-amber-500 text-slate-950 rounded-lg px-2'
+                    : 'text-blue-700'
+                }`}
+              >
+                ×
+              </span>
               <div className="flex flex-col items-center">
                 <FractionBox
                   num={diagram.secondDen}
@@ -558,6 +656,7 @@ const DiagramRenderer: React.FC<{
                   sign="+"
                   size="xl"
                   highlightTarget={highlightTarget}
+                  activeTerms={activeTerms}
                 />
                 <span className="text-xs font-semibold text-blue-700 mt-1">
                   Se dio vuelta
@@ -581,7 +680,7 @@ const DiagramRenderer: React.FC<{
             {diagram.result && (
               <div className="px-5 py-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center gap-3">
                 <span className="text-slate-600 font-medium">Resultado:</span>
-                <ColorMath expr={diagram.result} size="lg" highlightTarget={highlightTarget} />
+                <ColorMath expr={diagram.result} size="lg" highlightTarget={highlightTarget} activeTerms={activeTerms} />
               </div>
             )}
           </div>
@@ -639,6 +738,7 @@ const DiagramRenderer: React.FC<{
                   expr={`${diagram.expanded} = ${diagram.result}`}
                   size="xl"
                   highlightTarget={highlightTarget}
+                  activeTerms={activeTerms}
                 />
               </div>
               <div
@@ -701,6 +801,7 @@ const DiagramRenderer: React.FC<{
                   expr={`${diagram.rootNum} × ${diagram.rootNum} = ${diagram.radicandNum}`}
                   size="md"
                   highlightTarget={highlightTarget}
+                  activeTerms={activeTerms}
                 />
               </div>
             </div>
@@ -753,6 +854,7 @@ const DiagramRenderer: React.FC<{
                 expr={`${diagram.rootNum} × ${diagram.rootNum} × ${diagram.rootNum} = ${diagram.radicandNum}`}
                 size="md"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
             </div>
           </div>
@@ -816,6 +918,7 @@ const DiagramRenderer: React.FC<{
               expr={diagram.expression}
               size="lg"
               highlightTarget={highlightTarget}
+              activeTerms={activeTerms}
             />
             <p className="text-sm text-slate-700 leading-relaxed">{diagram.stepNote}</p>
           </div>
@@ -974,6 +1077,7 @@ const DiagramRenderer: React.FC<{
                       expr={r.monomio}
                       size="md"
                       highlightTarget={highlightTarget}
+                      activeTerms={activeTerms}
                     />
                   </td>
                   <td
@@ -1017,6 +1121,7 @@ const DiagramRenderer: React.FC<{
                 expr={diagram.leftLabel}
                 size="xl"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
             </div>
 
@@ -1040,6 +1145,7 @@ const DiagramRenderer: React.FC<{
                 expr={diagram.rightLabel}
                 size="xl"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
             </div>
 
@@ -1056,6 +1162,7 @@ const DiagramRenderer: React.FC<{
                 expr={diagram.resultLabel}
                 size="xl"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
             </div>
           </div>
@@ -1085,6 +1192,7 @@ const DiagramRenderer: React.FC<{
               expr={`${diagram.coeffA}${diagram.baseVar}${toSup(diagram.expA)} ${opSymbol} ${diagram.coeffB}${diagram.baseVar}${toSup(diagram.expB)} = ${diagram.coeffResult}${diagram.baseVar}${toSup(resultExp)}`}
               size="xl"
               highlightTarget={highlightTarget}
+              activeTerms={activeTerms}
             />
           </div>
 
@@ -1173,6 +1281,7 @@ const DiagramRenderer: React.FC<{
                 expr={`Lado = ${diagram.widthLabel}`}
                 size="lg"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
@@ -1181,6 +1290,7 @@ const DiagramRenderer: React.FC<{
                   expr={diagram.heightLabel}
                   size="lg"
                   highlightTarget={highlightTarget}
+                  activeTerms={activeTerms}
                 />
               </div>
               <div
@@ -1194,6 +1304,7 @@ const DiagramRenderer: React.FC<{
                     expr={diagram.areaLabel}
                     size="xl"
                     highlightTarget={highlightTarget}
+                    activeTerms={activeTerms}
                   />
                 )}
               </div>
@@ -1213,6 +1324,7 @@ const DiagramRenderer: React.FC<{
                 expr={`Área = ${diagram.widthLabel} × ${diagram.heightLabel}`}
                 size="lg"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
             </div>
             <div className="text-sm text-slate-600">
@@ -1223,6 +1335,7 @@ const DiagramRenderer: React.FC<{
                 expr={`Área = ${diagram.areaLabel}`}
                 size="xl"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
             </div>
           </div>
@@ -1231,40 +1344,72 @@ const DiagramRenderer: React.FC<{
     }
 
     case 'steps-board': {
+      const normalizedStep = (activeStepLabel || '').toLowerCase();
+      const matchedIndices = normalizedStep
+        ? diagram.lines
+            .map((line, i) =>
+              (line.label || '').toLowerCase() === normalizedStep ||
+              (line.label || '').toLowerCase().includes(normalizedStep)
+                ? i
+                : -1
+            )
+            .filter((i) => i >= 0)
+        : [];
+      const hasRowStepMatch = matchedIndices.length > 0;
+
       return (
         <div className="w-full max-w-3xl space-y-2 sm:space-y-2.5">
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 sm:mb-2">
             {diagram.exerciseTag}
           </div>
-          {diagram.lines.map((line, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className={`flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-1.5 sm:gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl border ${
-                line.focus
-                  ? 'bg-blue-50/70 border-blue-200'
-                  : 'bg-slate-50/70 border-slate-200'
-              }`}
-            >
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
-                {line.label && (
-                  <span className="font-semibold text-xs sm:text-sm text-slate-700 min-w-[2.4rem] sm:min-w-[3.2rem] shrink-0">
-                    {line.label}
+          {diagram.lines.map((line, idx) => {
+            const isStepRow = hasRowStepMatch && matchedIndices.includes(idx);
+            const rowTerms = hasRowStepMatch ? (isStepRow ? activeTerms : []) : activeTerms;
+            return (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className={`flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-1.5 sm:gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl border transition-all duration-300 ${
+                  isStepRow
+                    ? 'bg-amber-50/90 border-amber-400 ring-2 ring-amber-300 scale-[1.015] shadow-sm'
+                    : line.focus
+                      ? 'bg-blue-50/70 border-blue-200'
+                      : hasRowStepMatch
+                        ? 'bg-slate-50/50 border-slate-200 opacity-70'
+                        : 'bg-slate-50/70 border-slate-200'
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+                  {line.label && (
+                    <span
+                      className={`font-semibold text-xs sm:text-sm min-w-[2.4rem] sm:min-w-[3.2rem] shrink-0 ${
+                        isStepRow ? 'text-amber-900 font-bold' : 'text-slate-700'
+                      }`}
+                    >
+                      {line.label}
+                    </span>
+                  )}
+                  <ColorMath
+                    expr={line.math}
+                    size="md"
+                    highlightTarget={highlightTarget}
+                    activeTerms={rowTerms}
+                  />
+                </div>
+                {line.note && (
+                  <span
+                    className={`text-xs sm:text-sm ${
+                      isStepRow ? 'text-amber-950 font-medium' : 'text-slate-600'
+                    }`}
+                  >
+                    {line.note}
                   </span>
                 )}
-                <ColorMath
-                  expr={line.math}
-                  size="md"
-                  highlightTarget={highlightTarget}
-                />
-              </div>
-              {line.note && (
-                <span className="text-xs sm:text-sm text-slate-600">{line.note}</span>
-              )}
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       );
     }
@@ -1275,6 +1420,8 @@ const DiagramRenderer: React.FC<{
           sceneId={scene.id}
           diagram={diagram}
           highlightTarget={highlightTarget}
+          activeTerms={activeTerms}
+          onPracticeSolved={onPracticeSolved}
         />
       );
     }
@@ -1342,6 +1489,7 @@ const DiagramRenderer: React.FC<{
           sceneId={scene.id}
           diagram={diagram}
           activeSpokenText={activeSpokenText}
+          onPracticeSolved={onPracticeSolved}
         />
       );
     }
@@ -1356,16 +1504,60 @@ function toSup(n: number): string {
     .join('');
 }
 
+const BEST_TIMES_KEY = 'lucia_best_times_v1';
+
+function loadBestTimes(): Record<string, number> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(BEST_TIMES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveBestTime(sceneId: string, seconds: number): { best: number; isNewBest: boolean } {
+  const map = loadBestTimes();
+  const prev = map[sceneId];
+  const isNewBest = typeof prev !== 'number' || seconds < prev;
+  const best = isNewBest ? seconds : prev;
+  if (isNewBest && typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(BEST_TIMES_KEY, JSON.stringify({ ...map, [sceneId]: seconds }));
+    } catch {
+      // Ignore storage errors cleanly
+    }
+  }
+  return { best, isNewBest };
+}
+
+function formatChrono(totalSec: number): string {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 const PracticeChallengeView: React.FC<{
   sceneId: string;
   diagram: Extract<LessonScene['diagram'], { type: 'practice-challenge' }>;
   highlightTarget: SpotlightTarget;
-}> = ({ sceneId, diagram, highlightTarget }) => {
+  activeTerms: string[];
+  onPracticeSolved?: (sceneId: string) => void;
+}> = ({ sceneId, diagram, highlightTarget, activeTerms, onPracticeSolved }) => {
   const [secondsLeft, setSecondsLeft] = useState(15);
   const [timerPaused, setTimerPaused] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
+
+  // Optional Modo Reto stopwatch
+  const [challengeMode, setChallengeMode] = useState(false);
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const [challengeCompletedSec, setChallengeCompletedSec] = useState<number | null>(null);
+  const [isNewBest, setIsNewBest] = useState(false);
+  const [bestTime, setBestTime] = useState<number | null>(() => loadBestTimes()[sceneId] ?? null);
 
   useEffect(() => {
     setSecondsLeft(15);
@@ -1373,6 +1565,11 @@ const PracticeChallengeView: React.FC<{
     setSelectedId(null);
     setShowHint(false);
     setShowSolution(false);
+    setChallengeMode(false);
+    setElapsedSec(0);
+    setChallengeCompletedSec(null);
+    setIsNewBest(false);
+    setBestTime(loadBestTimes()[sceneId] ?? null);
   }, [sceneId]);
 
   useEffect(() => {
@@ -1383,6 +1580,26 @@ const PracticeChallengeView: React.FC<{
     return () => window.clearInterval(id);
   }, [timerPaused, secondsLeft, showSolution]);
 
+  useEffect(() => {
+    if (!challengeMode || challengeCompletedSec !== null) return;
+    const id = window.setInterval(() => {
+      setElapsedSec((e) => e + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [challengeMode, challengeCompletedSec]);
+
+  const toggleChallengeMode = () => {
+    setChallengeMode((prev) => {
+      const next = !prev;
+      if (next) {
+        setElapsedSec(0);
+        setChallengeCompletedSec(null);
+        setIsNewBest(false);
+      }
+      return next;
+    });
+  };
+
   const selectedOption = diagram.options.find((o) => o.id === selectedId);
 
   const handleSelect = (opt: (typeof diagram.options)[number]) => {
@@ -1390,6 +1607,14 @@ const PracticeChallengeView: React.FC<{
     if (opt.isCorrect) {
       playSoftFeedbackTone('success');
       setShowSolution(true);
+      onPracticeSolved?.(sceneId);
+      if (challengeMode && challengeCompletedSec === null) {
+        const finalSec = Math.max(1, elapsedSec);
+        const res = saveBestTime(sceneId, finalSec);
+        setChallengeCompletedSec(finalSec);
+        setBestTime(res.best);
+        setIsNewBest(res.isNewBest);
+      }
     } else {
       playSoftFeedbackTone('gentle');
     }
@@ -1406,6 +1631,7 @@ const PracticeChallengeView: React.FC<{
             expr={diagram.promptMath}
             size="xl"
             highlightTarget={highlightTarget}
+            activeTerms={activeTerms}
           />
         </div>
 
@@ -1431,6 +1657,43 @@ const PracticeChallengeView: React.FC<{
         </div>
       </div>
 
+      {/* Optional Modo Reto discrete stopwatch */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-indigo-50/60 border border-indigo-200 text-xs sm:text-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleChallengeMode}
+            aria-pressed={challengeMode}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-semibold transition-colors cursor-pointer ${
+              challengeMode
+                ? 'bg-indigo-700 border-indigo-900 text-white'
+                : 'bg-white border-indigo-300 text-indigo-900 hover:bg-indigo-100'
+            }`}
+          >
+            <Trophy className="w-3.5 h-3.5" />
+            <span>{challengeMode ? 'Modo Reto activado' : 'Activar Modo Reto'}</span>
+          </button>
+          {challengeMode && (
+            <span className="font-math font-bold text-indigo-950 bg-white border border-indigo-200 rounded-lg px-2.5 py-1">
+              {formatChrono(challengeCompletedSec ?? elapsedSec)}
+            </span>
+          )}
+          {challengeCompletedSec !== null && (
+            <span className="font-semibold text-emerald-800">
+              {isNewBest
+                ? `¡Nuevo mejor tiempo: ${formatChrono(challengeCompletedSec)}!`
+                : `¡Resuelto en ${formatChrono(challengeCompletedSec)}!`}
+            </span>
+          )}
+        </div>
+        {bestTime !== null && (
+          <span className="inline-flex items-center gap-1 text-indigo-900 font-medium font-math">
+            <Trophy className="w-3.5 h-3.5 text-amber-600" />
+            <span>Mejor: {formatChrono(bestTime)}</span>
+          </span>
+        )}
+      </div>
+
       <p className="text-sm sm:text-base font-medium text-slate-800">{diagram.question}</p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1454,6 +1717,7 @@ const PracticeChallengeView: React.FC<{
                 expr={opt.label}
                 size="md"
                 highlightTarget={highlightTarget}
+                activeTerms={activeTerms}
               />
             </button>
           );
@@ -1668,7 +1932,7 @@ const EnglishCardsView: React.FC<{
     <div className="w-full max-w-3xl space-y-4">
       {diagram.banner && (
         <div
-          className={`px-4 py-3 rounded-xl border text-center font-display text-base sm:text-lg md:text-xl font-bold tracking-wide transition-transform ${
+          className={`px-4 py-3 rounded-xl border text-center font-english-accessible text-base sm:text-lg md:text-xl font-bold tracking-wider transition-transform ${
             bannerMatched
               ? 'bg-blue-100 border-blue-500 text-slate-900 scale-[1.02] shadow-sm'
               : 'bg-sky-50 border-sky-200 text-slate-900'
@@ -1712,7 +1976,7 @@ const EnglishCardsView: React.FC<{
                     </span>
                   )}
                   <div className="min-w-0 space-y-0.5">
-                    <div className="font-display text-base sm:text-lg font-bold text-slate-900 tracking-wide break-words">
+                    <div className="font-english-accessible text-base sm:text-lg font-bold text-slate-900 tracking-wider break-words">
                       {card.title}
                     </div>
                     {card.subtitle && (
@@ -1770,16 +2034,37 @@ const EnglishQuizView: React.FC<{
   sceneId: string;
   diagram: Extract<LessonScene['diagram'], { type: 'english-quiz' }>;
   activeSpokenText: string;
-}> = ({ sceneId, diagram, activeSpokenText }) => {
+  onPracticeSolved?: (sceneId: string) => void;
+}> = ({ sceneId, diagram, activeSpokenText, onPracticeSolved }) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showHint, setShowHint] = useState(false);
   const [showAllAnswers, setShowAllAnswers] = useState(false);
+
+  // Optional Modo Reto stopwatch
+  const [challengeMode, setChallengeMode] = useState(false);
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const [challengeCompletedSec, setChallengeCompletedSec] = useState<number | null>(null);
+  const [isNewBest, setIsNewBest] = useState(false);
+  const [bestTime, setBestTime] = useState<number | null>(() => loadBestTimes()[sceneId] ?? null);
 
   useEffect(() => {
     setAnswers({});
     setShowHint(false);
     setShowAllAnswers(false);
+    setChallengeMode(false);
+    setElapsedSec(0);
+    setChallengeCompletedSec(null);
+    setIsNewBest(false);
+    setBestTime(loadBestTimes()[sceneId] ?? null);
   }, [sceneId]);
+
+  useEffect(() => {
+    if (!challengeMode || challengeCompletedSec !== null) return;
+    const id = window.setInterval(() => {
+      setElapsedSec((e) => e + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [challengeMode, challengeCompletedSec]);
 
   const itemSpokenMatches = useMemo(
     () =>
@@ -1794,13 +2079,37 @@ const EnglishQuizView: React.FC<{
 
   const anySpokenMatched = itemSpokenMatches.some(Boolean);
 
+  const toggleChallengeMode = () => {
+    setChallengeMode((prev) => {
+      const next = !prev;
+      if (next) {
+        setElapsedSec(0);
+        setChallengeCompletedSec(null);
+        setIsNewBest(false);
+      }
+      return next;
+    });
+  };
+
   const handleChoose = (
     item: Extract<LessonScene['diagram'], { type: 'english-quiz' }>['items'][number],
     option: string
   ) => {
-    setAnswers((prev) => ({ ...prev, [item.id]: option }));
+    const nextAnswers = { ...answers, [item.id]: option };
+    setAnswers(nextAnswers);
     if (option === item.correctOption) {
       playSoftFeedbackTone('success');
+      const allDone = diagram.items.every((it) => nextAnswers[it.id] === it.correctOption);
+      if (allDone) {
+        onPracticeSolved?.(sceneId);
+        if (challengeMode && challengeCompletedSec === null) {
+          const finalSec = Math.max(1, elapsedSec);
+          const res = saveBestTime(sceneId, finalSec);
+          setChallengeCompletedSec(finalSec);
+          setBestTime(res.best);
+          setIsNewBest(res.isNewBest);
+        }
+      }
     } else {
       playSoftFeedbackTone('gentle');
     }
@@ -1819,6 +2128,43 @@ const EnglishQuizView: React.FC<{
         <span className="text-xs sm:text-sm font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
           Completadas: {correctCount} de {diagram.items.length}
         </span>
+      </div>
+
+      {/* Optional Modo Reto discrete stopwatch */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-indigo-50/60 border border-indigo-200 text-xs sm:text-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleChallengeMode}
+            aria-pressed={challengeMode}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-semibold transition-colors cursor-pointer ${
+              challengeMode
+                ? 'bg-indigo-700 border-indigo-900 text-white'
+                : 'bg-white border-indigo-300 text-indigo-900 hover:bg-indigo-100'
+            }`}
+          >
+            <Trophy className="w-3.5 h-3.5" />
+            <span>{challengeMode ? 'Modo Reto activado' : 'Activar Modo Reto'}</span>
+          </button>
+          {challengeMode && (
+            <span className="font-math font-bold text-indigo-950 bg-white border border-indigo-200 rounded-lg px-2.5 py-1">
+              {formatChrono(challengeCompletedSec ?? elapsedSec)}
+            </span>
+          )}
+          {challengeCompletedSec !== null && (
+            <span className="font-semibold text-emerald-800">
+              {isNewBest
+                ? `¡Nuevo mejor tiempo: ${formatChrono(challengeCompletedSec)}!`
+                : `¡Resuelto en ${formatChrono(challengeCompletedSec)}!`}
+            </span>
+          )}
+        </div>
+        {bestTime !== null && (
+          <span className="inline-flex items-center gap-1 text-indigo-900 font-medium font-math">
+            <Trophy className="w-3.5 h-3.5 text-amber-600" />
+            <span>Mejor: {formatChrono(bestTime)}</span>
+          </span>
+        )}
       </div>
 
       <div
@@ -1858,7 +2204,7 @@ const EnglishQuizView: React.FC<{
                     </span>
                   )}
                   <div className="min-w-0">
-                    <div className="font-display text-base sm:text-lg font-bold text-slate-900">
+                    <div className="font-english-accessible text-base sm:text-lg font-bold text-slate-900 tracking-wider">
                       {item.prompt}
                     </div>
                     {item.subLabel && (

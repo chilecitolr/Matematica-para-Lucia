@@ -3,13 +3,16 @@ import {
   Award,
   BookOpen,
   Captions,
+  Check,
   ChevronLeft,
   ChevronRight,
   Download,
   FileText,
+  Maximize2,
   Pause,
   Play,
   RotateCcw,
+  Sparkles,
   Volume2,
   VolumeX,
   X,
@@ -17,7 +20,6 @@ import {
 import {
   ALL_CHAPTERS,
   ALL_ENGLISH_CHAPTERS,
-  VIDEO_MODULES,
   getChaptersForVideo,
   getVideosForSubject,
 } from './data/curriculum';
@@ -25,7 +27,22 @@ import type { Chapter, LessonScene, SubjectId, VideoId } from './types/lesson';
 import { VideoStage } from './components/VideoStage';
 import { useNarrator } from './hooks/useNarrator';
 import { DownloadCenterModal } from './components/DownloadCenterModal';
+import { FloatingNotepad } from './components/FloatingNotepad';
 import type { SpotlightTarget } from './utils/spotlightCues';
+
+const COMPLETED_SCENES_KEY = 'lucia_completed_scenes_v1';
+
+function loadCompletedScenes(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(COMPLETED_SCENES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 interface FlatSceneItem {
   chapter: Chapter;
@@ -132,9 +149,29 @@ export default function App() {
   const [playbackRate, setPlaybackRate] = useState<0.75 | 0.9 | 1>(0.9);
   const [replayNonce, setReplayNonce] = useState(0);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [showEnglishGuideModal, setShowEnglishGuideModal] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [downloadTargetVideoId, setDownloadTargetVideoId] = useState<VideoId | null>(null);
   const [manualSpotlight, setManualSpotlight] = useState<SpotlightTarget>('none');
+  const [completedSceneIds, setCompletedSceneIds] = useState<string[]>(() =>
+    loadCompletedScenes()
+  );
+
+  const markSceneCompleted = useCallback((sceneId?: string) => {
+    if (!sceneId) return;
+    setCompletedSceneIds((prev) => {
+      if (prev.includes(sceneId)) return prev;
+      const next = [...prev, sceneId];
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(COMPLETED_SCENES_KEY, JSON.stringify(next));
+        } catch {
+          // Ignore storage quota errors
+        }
+      }
+      return next;
+    });
+  }, []);
 
   const subjectVideos = useMemo(
     () => getVideosForSubject(subject),
@@ -182,6 +219,9 @@ export default function App() {
   };
 
   const handleNextScene = useCallback(() => {
+    if (currentItem?.scene.id && currentItem.scene.phase !== 'practica') {
+      markSceneCompleted(currentItem.scene.id);
+    }
     setSceneIndex((prev) => {
       if (prev + 1 < flatScenes.length) {
         return prev + 1;
@@ -189,7 +229,7 @@ export default function App() {
       setIsPlaying(false);
       return prev;
     });
-  }, [flatScenes.length]);
+  }, [flatScenes.length, currentItem, markSceneCompleted]);
 
   const handlePrevScene = () => {
     setSceneIndex((prev) => Math.max(0, prev - 1));
@@ -214,12 +254,15 @@ export default function App() {
 
   // Pause automatically when arriving at a "practice" ("AHORA TE TOCA A VOS") scene after narration finishes
   const handleNarrationComplete = useCallback(() => {
+    if (currentItem?.scene.id && !isPracticeScene) {
+      markSceneCompleted(currentItem.scene.id);
+    }
     if (isPracticeScene) {
       setIsPlaying(false);
       return;
     }
     handleNextScene();
-  }, [isPracticeScene, handleNextScene]);
+  }, [isPracticeScene, handleNextScene, currentItem, markSceneCompleted]);
 
   const {
     isLoadingAudio,
@@ -251,10 +294,21 @@ export default function App() {
   const totalChaptersCount =
     subject === 'ingles' ? ALL_ENGLISH_CHAPTERS.length : ALL_CHAPTERS.length;
 
+  const completedInVideoCount = useMemo(() => {
+    const doneSet = new Set(completedSceneIds);
+    return flatScenes.filter((item) => doneSet.has(item.scene.id)).length;
+  }, [flatScenes, completedSceneIds]);
+
+  const videoProgressPct = useMemo(() => {
+    if (flatScenes.length === 0) return 0;
+    return Math.round((completedInVideoCount / flatScenes.length) * 100);
+  }, [completedInVideoCount, flatScenes.length]);
+
   const pdfHref =
     subject === 'ingles'
       ? `${import.meta.env.BASE_URL}assets/aistudio/ingles_paso_a_paso_dislexia_3ro__1__079a2dbc.pdf`
       : `${import.meta.env.BASE_URL}assets/aistudio/Trabajo_Practico_Integrador_Matematica_3er_ano_monomios_corregidos_2fb32742.pdf`;
+  const englishGuideHref = `${import.meta.env.BASE_URL}assets/aistudio/ingles_3ro_autoaprendizaje_3d767fcf.html`;
   const pdfTitle =
     subject === 'ingles'
       ? 'Inglés Paso a Paso – Guía Visual (3.er año)'
@@ -410,12 +464,41 @@ export default function App() {
                   : `${totalChaptersCount} capítulos en 4 videos cortos`}
               </span>
             </div>
-            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">
+            <h1
+              className={`text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 ${
+                subject === 'ingles' ? 'font-english-accessible' : 'font-display'
+              }`}
+            >
               {activeVideo.shortLabel}: {activeVideo.title}
             </h1>
-            <p className="text-slate-600 text-sm sm:text-base">
+            <p
+              className={`text-slate-600 text-sm sm:text-base ${
+                subject === 'ingles' ? 'font-english-accessible text-sm' : ''
+              }`}
+            >
               {activeVideo.subtitle}
             </p>
+
+            {/* Global topic completion progress indicator */}
+            <div
+              className="pt-1.5 max-w-md space-y-1.5"
+              aria-label={`Avance del tema: ${videoProgressPct}%`}
+            >
+              <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
+                <span className="font-semibold text-slate-700">
+                  Avance de Lucía: {completedInVideoCount} de {flatScenes.length} escenas completadas
+                </span>
+                <span className="font-math font-bold text-emerald-700 shrink-0">
+                  {videoProgressPct}%
+                </span>
+              </div>
+              <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-emerald-600 transition-all duration-500"
+                  style={{ width: `${videoProgressPct}%` }}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
@@ -446,6 +529,20 @@ export default function App() {
               <FileText className="w-4 h-4 text-blue-700" />
               <span>{subject === 'ingles' ? 'Ver guía Inglés (PDF)' : 'Ver TP original (PDF)'}</span>
             </button>
+            {subject === 'ingles' && (
+              <button
+                type="button"
+                onClick={() => {
+                  document
+                    .getElementById('ingles-repaso-final')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className="inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 min-h-[44px] rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-xs sm:text-sm font-semibold text-emerald-900 whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-700" />
+                <span>Guía interactiva final</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -464,6 +561,7 @@ export default function App() {
                 narrationProgress={progress}
                 manualSpotlight={manualSpotlight}
                 showSubtitles={showSubtitles}
+                onPracticeSolved={markSceneCompleted}
               />
             )}
 
@@ -728,7 +826,11 @@ export default function App() {
                         <div className={`text-xs font-semibold ${pal.kicker}`}>
                           {subject === 'ingles' ? 'Tema' : 'Capítulo'} {chapter.number} · {chapter.activityRef}
                         </div>
-                        <div className={`font-display font-bold text-sm ${pal.title}`}>
+                        <div
+                          className={`font-bold text-sm ${pal.title} ${
+                            subject === 'ingles' ? 'font-english-accessible' : 'font-display'
+                          }`}
+                        >
                           {chapter.title}
                         </div>
                       </div>
@@ -737,6 +839,7 @@ export default function App() {
                         {chapterScenes.map((item) => {
                           const active = item.globalIndex === sceneIndex;
                           const isPractice = item.scene.phase === 'practica';
+                          const isCompleted = completedSceneIds.includes(item.scene.id);
                           return (
                             <button
                               key={item.scene.id}
@@ -744,9 +847,19 @@ export default function App() {
                               onClick={() => setSceneIndex(item.globalIndex)}
                               className={`w-full text-left px-3 py-2.5 min-h-[44px] rounded-lg border text-xs sm:text-sm transition-colors flex items-center justify-between gap-2 cursor-pointer ${
                                 active ? pal.btnActive : pal.btnInactive
-                              }`}
+                              } ${subject === 'ingles' ? 'font-english-accessible text-xs' : ''}`}
                             >
-                              <span className="leading-snug">{item.scene.headline}</span>
+                              <span className="leading-snug flex items-center gap-1.5">
+                                {isCompleted && (
+                                  <Check
+                                    className={`w-3.5 h-3.5 shrink-0 ${
+                                      active ? 'text-white' : 'text-emerald-700'
+                                    }`}
+                                    aria-label="Completada"
+                                  />
+                                )}
+                                <span>{item.scene.headline}</span>
+                              </span>
                               {isPractice && (
                                 <span
                                   className={`text-[11px] font-semibold shrink-0 ${
@@ -777,6 +890,55 @@ export default function App() {
             </div>
           </aside>
         </div>
+
+        {/* Interactive Self-Learning HTML Guide Embedded at the End of Inglés (uses <section> to keep div nth-of-type intact) */}
+        {subject === 'ingles' && (
+          <section
+            id="ingles-repaso-final"
+            aria-label="Guía interactiva final de Inglés"
+            className="bg-white border-2 border-emerald-200 rounded-2xl p-4 sm:p-6 space-y-4 shadow-sm"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                  Cierre interactivo · Inglés 3.er año
+                </div>
+                <h2 className="font-english-accessible text-lg sm:text-xl font-bold text-slate-900">
+                  GUÍA COMPLETA DE AUTOAPRENDIZAJE PARA PRACTICAR AL FINAL
+                </h2>
+                <p className="font-english-accessible text-xs sm:text-sm text-slate-600">
+                  PODÉS USAR LOS BOTONES DE AUDIO, EL MODO LETRA GRANDE Y LOS EJERCICIOS PASO A PASO DIRECTAMENTE ACÁ ABAJO.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEnglishGuideModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold transition-colors cursor-pointer"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                  <span>Ver en pantalla completa</span>
+                </button>
+                <a
+                  href={englishGuideHref}
+                  download="Ingles_3ro_Autoaprendizaje.html"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs sm:text-sm font-semibold transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Guardar guía</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+              <iframe
+                src={englishGuideHref}
+                title="Guía interactiva final de Inglés 3.er año"
+                className="w-full h-[740px] bg-white"
+              />
+            </div>
+          </section>
+        )}
       </main>
 
       {/* In-App Modal for Viewing Original PDF without window.open */}
@@ -819,6 +981,44 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* In-App Full-Screen Modal for Inglés Self-Learning Guide */}
+      {showEnglishGuideModal && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-2 sm:p-5"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Guía interactiva final de Inglés 3.er año"
+        >
+          <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden shadow-xl">
+            <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-6 border-b border-slate-200">
+              <div className="font-english-accessible text-sm sm:text-base font-bold text-slate-900">
+                GUÍA COMPLETA DE AUTOAPRENDIZAJE · INGLÉS 3.ER AÑO
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEnglishGuideModal(false)}
+                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 cursor-pointer"
+                aria-label="Cerrar guía interactiva"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <iframe
+              src={englishGuideHref}
+              title="Guía interactiva final de Inglés 3.er año (pantalla completa)"
+              className="flex-1 w-full bg-white"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Floating Notepad persisted locally per topic */}
+      <FloatingNotepad
+        topicId={activeVideo.id}
+        topicLabel={activeVideo.shortLabel}
+        topicTitle={activeVideo.title}
+      />
 
       <DownloadCenterModal
         open={downloadModalOpen}

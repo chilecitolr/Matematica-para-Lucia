@@ -102,8 +102,8 @@ export const VIDEO_1_CHAPTERS: Chapter[] = [
         headline: 'Actividad 1 (b, c, d, e, f) paso a paso',
         keyMessage: 'Practicamos buscar el común denominador y simplificar en los ejercicios del TP.',
         narration:
-          'Miremos otros ejercicios de la Actividad 1. En el b, siete sextos menos un tercio: pasamos un tercio a dos sextos y nos queda cinco sextos. En el d, nueve décimos menos dos quintos más un medio: todo pasa a décimos, nueve menos cuatro más cinco da diez décimos, que simplificado da uno entero. Y en el f, primero resolvemos el paréntesis.',
-        durationSeconds: 17,
+          'Miremos otros ejercicios de la Actividad 1. En el b, siete sextos menos un tercio: multiplicamos un tercio por dos arriba y abajo para pasarlo a dos sextos, y así siete sextos menos dos sextos da cinco sextos. En el d, nueve décimos menos dos quintos más un medio: todo pasa a décimos, nueve menos cuatro más cinco da diez décimos, que simplificado da uno entero. Y en el f, primero resolvemos el paréntesis.',
+        durationSeconds: 20,
         diagram: {
           type: 'steps-board',
           exerciseTag: 'Actividad 1 · Trabajo Práctico',
@@ -113,6 +113,27 @@ export const VIDEO_1_CHAPTERS: Chapter[] = [
             { label: 'd)', math: '9/10 - 2/5 + 1/2 = 9/10 - 4/10 + 5/10 = 10/10 = 1', focus: true, note: 'Simplificamos dividiendo por 10' },
             { label: 'e)', math: '11/12 - 3/8 = 22/24 - 9/24 = 13/24' },
             { label: 'f)', math: '7/9 - (5/6 - 1/4) = 7/9 - 7/12 = 28/36 - 21/36 = 7/36' },
+          ],
+        },
+      },
+      {
+        id: 'c1-s6a',
+        phase: 'paso',
+        headline: 'Paso a paso · Actividad 1b: 7/6 − 1/3',
+        keyMessage: '¿De dónde sale 7/6 − 2/6? Convertimos 1/3 multiplicando × 2 arriba y abajo para tener el mismo 6 abajo.',
+        narration:
+          'Veamos muy despacio de dónde sale siete sextos menos dos sextos en el ejercicio b: siete sextos menos un tercio. Miramos los números de abajo: son seis y tres. Como el seis está en la tabla del tres porque tres por dos es seis, usamos el seis como denominador común. Paso uno: siete sextos ya tiene un seis abajo, así que queda igual. Paso dos: un tercio necesita llegar a seis abajo, entonces multiplicamos por dos arriba y por dos abajo: uno por dos da dos y tres por dos da seis, así un tercio se convierte en dos sextos. Paso tres: ahora sí escribimos siete sextos menos dos sextos porque hablan de sextos. Resultado: dejamos el seis abajo y restamos siete menos dos igual a cinco sextos.',
+        durationSeconds: 30,
+        supportPhrase: 'Primero igualamos los números de abajo multiplicando × 2 arriba y abajo.',
+        diagram: {
+          type: 'steps-board',
+          exerciseTag: 'Actividad 1b · Paso a paso',
+          lines: [
+            { label: 'Ejercicio', math: '7/6 - 1/3', note: 'Denominadores: 6 y 3 → común 6 (porque 3 × 2 = 6)' },
+            { label: 'Paso 1', math: '7/6 = 7/6', note: 'Ya tiene 6 abajo, queda igual' },
+            { label: 'Paso 2', math: '1/3 = (1 × 2)/(3 × 2) = 2/6', note: 'Multiplicamos × 2 arriba y abajo' },
+            { label: 'Paso 3', math: '7/6 - 2/6', note: 'Ahora las dos tienen denominador 6' },
+            { label: 'Resultado', math: '(7 - 2)/6 = 5/6', focus: true, note: 'Dejamos el 6 abajo y restamos 7 − 2 = 5' },
           ],
         },
       },

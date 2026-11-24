@@ -22,6 +22,14 @@
     font-family: var(--font-math);
     font-variant-numeric: tabular-nums;
   }
+
+  .font-english-accessible {
+    font-family: "Atkinson Hyperlegible", "Verdana", "Arial", sans-serif;
+    letter-spacing: 0.045em;
+    word-spacing: 0.14em;
+    line-height: 1.75;
+    text-transform: uppercase;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
