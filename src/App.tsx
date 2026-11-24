@@ -6,6 +6,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Compass,
   Download,
   FileText,
   Grid3X3,
@@ -29,6 +30,7 @@ import { VideoStage } from './components/VideoStage';
 import { playChapterCelebrationChime, useNarrator } from './hooks/useNarrator';
 import { DownloadCenterModal } from './components/DownloadCenterModal';
 import { FloatingNotepad } from './components/FloatingNotepad';
+import { FreePracticeModal } from './components/FreePracticeModal';
 import { MultiplicationCheatModal } from './components/MultiplicationCheatModal';
 import { QuickCheckCard } from './components/QuickCheckCard';
 import {
@@ -215,12 +217,13 @@ export default function App() {
   const [sceneIndex, setSceneIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [showSubtitles, setShowSubtitles] = useState(true);
+  const [showSubtitles, setShowSubtitles] = useState(false);
   const [playbackRate, setPlaybackRate] = useState<0.75 | 0.9 | 1>(0.9);
   const [replayNonce, setReplayNonce] = useState(0);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [showEnglishGuideModal, setShowEnglishGuideModal] = useState(false);
   const [showTablesModal, setShowTablesModal] = useState(false);
+  const [showFreePracticeModal, setShowFreePracticeModal] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [downloadTargetVideoId, setDownloadTargetVideoId] = useState<VideoId | null>(null);
   const [manualSpotlight, setManualSpotlight] = useState<SpotlightTarget>('none');
@@ -706,6 +709,14 @@ export default function App() {
               <FileText className="w-4 h-4 text-blue-700" />
               <span>{subject === 'ingles' ? 'Ver guía Inglés (PDF)' : 'Ver TP original (PDF)'}</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setShowFreePracticeModal(true)}
+              className="inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 min-h-[44px] rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-xs sm:text-sm font-semibold text-amber-950 whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              <Compass className="w-4 h-4 text-amber-700" />
+              <span>Práctica Libre</span>
+            </button>
             {subject === 'matematica' && (
               <button
                 type="button"
@@ -879,10 +890,12 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setShowSubtitles((s) => !s)}
-                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+                    aria-pressed={showSubtitles}
+                    title={showSubtitles ? 'Ocultar subtítulos' : 'Mostrar subtítulos'}
+                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
                       showSubtitles
-                        ? 'border-blue-200 bg-blue-50 text-blue-800'
-                        : 'border-slate-200 bg-white text-slate-700'
+                        ? 'border-blue-300 bg-blue-50 text-blue-800'
+                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
                     }`}
                   >
                     <Captions className="w-4 h-4" />
@@ -1237,6 +1250,12 @@ export default function App() {
         topicTitle={activeVideo.title}
         showTablesButton={subject === 'matematica'}
         onOpenTables={() => setShowTablesModal(true)}
+      />
+
+      <FreePracticeModal
+        open={showFreePracticeModal}
+        activeVideoId={activeVideo.id}
+        onClose={() => setShowFreePracticeModal(false)}
       />
 
       <MultiplicationCheatModal
