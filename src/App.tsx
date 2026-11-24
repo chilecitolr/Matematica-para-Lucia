@@ -446,27 +446,83 @@ export default function App() {
       ? 'Ingles_Paso_a_Paso_3er_ano.pdf'
       : 'Trabajo_Practico_Integrador_Matematica_3er_ano.pdf';
 
+  const subjectBrandTitle =
+    subject === 'ingles' ? 'Inglés Paso a Paso' : 'Matemática Paso a Paso';
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col">
-      {/* Strict 3-Zone Top Navigation Bar */}
+      {/* Top Navigation Bar starting directly with Subject Selection */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-6">
-          {/* Zone 1: Single-line Brand Wordmark */}
-          <a
-            href="#inicio"
-            onClick={(e) => {
-              e.preventDefault();
-              handleSelectVideo(subject === 'ingles' ? 'english-1' : 'video-1');
-            }}
-            className="font-display text-base sm:text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
-          >
-            {subject === 'ingles' ? 'Inglés Paso a Paso' : 'Matemática Paso a Paso'}
-          </a>
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 xl:gap-5">
+          {/* Zone 1: Subject Selection (Primary Left) + Displaced Secondary Subject Title */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div
+              role="group"
+              aria-label="Seleccionar materia"
+              className="flex items-center gap-1 p-1 bg-slate-100 border border-slate-200 rounded-xl shrink-0"
+            >
+              <button
+                type="button"
+                onClick={() => handleSelectSubject('matematica')}
+                aria-pressed={subject === 'matematica'}
+                className={`inline-flex items-center justify-center px-3 sm:px-4 py-1.5 min-h-[40px] rounded-lg text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  subject === 'matematica'
+                    ? 'bg-blue-800 text-white shadow-sm'
+                    : 'text-slate-700 hover:bg-white hover:text-blue-900'
+                }`}
+              >
+                <span>Matemática</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectSubject('ingles')}
+                aria-pressed={subject === 'ingles'}
+                className={`inline-flex items-center justify-center px-3 sm:px-4 py-1.5 min-h-[40px] rounded-lg text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  subject === 'ingles'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'text-slate-700 hover:bg-white hover:text-emerald-900'
+                }`}
+              >
+                <span>Inglés</span>
+              </button>
+            </div>
+
+            <span
+              className="hidden md:block lg:hidden xl:block w-px h-6 bg-slate-200 shrink-0"
+              aria-hidden="true"
+            />
+
+            <a
+              href="#inicio"
+              onClick={(e) => {
+                e.preventDefault();
+                handleSelectVideo(subject === 'ingles' ? 'english-1' : 'video-1');
+              }}
+              className="hidden md:inline-flex lg:hidden xl:inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap shrink-0"
+              title={`Ir al inicio de ${subjectBrandTitle}`}
+            >
+              <BookOpen
+                className={`w-4 h-4 shrink-0 ${
+                  subject === 'ingles' ? 'text-emerald-700' : 'text-blue-700'
+                }`}
+                aria-hidden="true"
+              />
+              <span
+                className={
+                  subject === 'ingles'
+                    ? 'font-english-accessible text-xs font-bold tracking-wide'
+                    : 'font-display'
+                }
+              >
+                {subjectBrandTitle}
+              </span>
+            </a>
+          </div>
 
           {/* Zone 2: 4 concise single-line color-coded nav buttons */}
           <nav
             aria-label={subject === 'ingles' ? 'Temas de inglés' : 'Videos de la serie'}
-            className="hidden lg:flex items-center gap-2 text-sm font-medium"
+            className="hidden lg:flex items-center gap-1.5 xl:gap-2 text-xs xl:text-sm font-medium min-w-0"
           >
             {subjectVideos.map((vid) => {
               const active = vid.id === activeVideo.id;
@@ -476,7 +532,7 @@ export default function App() {
                   key={vid.id}
                   type="button"
                   onClick={() => handleSelectVideo(vid.id)}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 xl:gap-2 px-2.5 xl:px-3 py-1.5 min-h-[38px] rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                     active ? `${theme.active} font-semibold` : theme.inactive
                   }`}
                 >
@@ -491,7 +547,7 @@ export default function App() {
             })}
           </nav>
 
-          {/* Zone 3: 1 Primary CTA */}
+          {/* Zone 3: 1 Primary CTA consistent with selected subject */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
@@ -499,7 +555,11 @@ export default function App() {
                 setDownloadTargetVideoId(null);
                 setDownloadModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 min-h-[40px] rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 min-h-[40px] rounded-lg text-white text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                subject === 'ingles'
+                  ? 'bg-emerald-700 hover:bg-emerald-800'
+                  : 'bg-blue-700 hover:bg-blue-800'
+              }`}
             >
               <Download className="w-4 h-4 shrink-0" />
               <span className="sm:hidden">Bajar MP4</span>
@@ -511,34 +571,23 @@ export default function App() {
 
       {/* Main Content Container */}
       <main id="inicio" className="flex-1 max-w-[1440px] w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 md:py-8 space-y-4 sm:space-y-6">
-        {/* Materia Switcher + Mobile Video Selector (kept as div 1 to preserve Focus Mode DOM positions) */}
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-1">
-              Materia:
-            </span>
-            <button
-              type="button"
-              onClick={() => handleSelectSubject('matematica')}
-              className={`inline-flex items-center gap-2 px-4 py-2 min-h-[42px] rounded-xl border-2 text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
-                subject === 'matematica'
-                  ? 'bg-blue-800 text-white border-blue-950 ring-2 ring-blue-300 shadow-md'
-                  : 'bg-blue-100 text-blue-950 border-blue-400 hover:bg-blue-200'
-              }`}
-            >
-              <span>Matemática · 3.er año</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectSubject('ingles')}
-              className={`inline-flex items-center gap-2 px-4 py-2 min-h-[42px] rounded-xl border-2 text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
+        {/* Series Context Bar + Mobile Video Selector (kept as div 1 to preserve Focus Mode DOM positions) */}
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs sm:text-sm text-slate-600">
+            <span
+              className={`font-bold ${
                 subject === 'ingles'
-                  ? 'bg-emerald-700 text-white border-emerald-950 ring-2 ring-emerald-300 shadow-md'
-                  : 'bg-emerald-100 text-emerald-950 border-emerald-400 hover:bg-emerald-200'
+                  ? 'font-english-accessible text-xs text-emerald-800'
+                  : 'font-display text-blue-900'
               }`}
             >
-              <span>Inglés · 3.er año</span>
-            </button>
+              {subjectBrandTitle} · 3.er año
+            </span>
+            <span className="text-slate-500">
+              {subject === 'ingles'
+                ? '4 temas visuales · Aprendizaje sin apuro'
+                : '4 videos paso a paso · Lucía'}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap lg:hidden items-center gap-2">
@@ -582,8 +631,8 @@ export default function App() {
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-slate-500">
               <span>
                 {subject === 'ingles'
-                  ? 'Inglés · Aprendemos de a poquito'
-                  : 'Trabajo Práctico Integrador Final'}
+                  ? `${subjectBrandTitle} · Aprendemos de a poquito`
+                  : `${subjectBrandTitle} · Trabajo Práctico Integrador Final`}
               </span>
               <span aria-hidden="true">·</span>
               <span>
