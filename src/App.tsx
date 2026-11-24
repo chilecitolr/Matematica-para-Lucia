@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Download,
   FileText,
+  Grid3X3,
   Maximize2,
   Pause,
   Play,
@@ -28,6 +29,8 @@ import { VideoStage } from './components/VideoStage';
 import { useNarrator } from './hooks/useNarrator';
 import { DownloadCenterModal } from './components/DownloadCenterModal';
 import { FloatingNotepad } from './components/FloatingNotepad';
+import { MultiplicationCheatModal } from './components/MultiplicationCheatModal';
+import { QuickCheckCard } from './components/QuickCheckCard';
 import type { SpotlightTarget } from './utils/spotlightCues';
 
 const COMPLETED_SCENES_KEY = 'lucia_completed_scenes_v1';
@@ -109,6 +112,8 @@ const CHAPTER_PALETTE = [
     btnActive: 'bg-blue-700 text-white border-2 border-blue-950 ring-2 ring-blue-300 font-bold shadow-md',
     practiceInactive: 'text-amber-800',
     practiceActive: 'text-blue-100',
+    ringStroke: '#1D4ED8',
+    ringTrack: '#BFDBFE',
   },
   {
     card: 'bg-orange-100/80 border-2 border-orange-400',
@@ -118,6 +123,8 @@ const CHAPTER_PALETTE = [
     btnActive: 'bg-orange-600 text-white border-2 border-orange-950 ring-2 ring-orange-300 font-bold shadow-md',
     practiceInactive: 'text-amber-900',
     practiceActive: 'text-orange-100',
+    ringStroke: '#EA580C',
+    ringTrack: '#FED7AA',
   },
   {
     card: 'bg-emerald-100/80 border-2 border-emerald-400',
@@ -127,6 +134,8 @@ const CHAPTER_PALETTE = [
     btnActive: 'bg-emerald-700 text-white border-2 border-emerald-950 ring-2 ring-emerald-300 font-bold shadow-md',
     practiceInactive: 'text-amber-800',
     practiceActive: 'text-emerald-100',
+    ringStroke: '#059669',
+    ringTrack: '#A7F3D0',
   },
   {
     card: 'bg-indigo-100/80 border-2 border-indigo-400',
@@ -136,8 +145,65 @@ const CHAPTER_PALETTE = [
     btnActive: 'bg-indigo-700 text-white border-2 border-indigo-950 ring-2 ring-indigo-300 font-bold shadow-md',
     practiceInactive: 'text-amber-800',
     practiceActive: 'text-indigo-100',
+    ringStroke: '#4338CA',
+    ringTrack: '#C7D2FE',
   },
 ];
+
+const ChapterProgressRing: React.FC<{
+  completed: number;
+  total: number;
+  strokeColor: string;
+  trackColor: string;
+}> = ({ completed, total, strokeColor, trackColor }) => {
+  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const size = 46;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference - (percent / 100) * circumference;
+  const activeStroke = percent === 100 ? '#059669' : strokeColor;
+
+  return (
+    <div
+      className="relative inline-flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+      title={`${completed} de ${total} escenas completadas (${percent}%)`}
+      aria-label={`Avance del capítulo: ${percent}% (${completed} de ${total} escenas)`}
+    >
+      <svg width={size} height={size} className="-rotate-90" role="img" aria-hidden="true">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="#FFFFFF"
+          fillOpacity={0.85}
+          stroke={trackColor}
+          strokeWidth={strokeWidth}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="transparent"
+          stroke={activeStroke}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          className="transition-all duration-500"
+        />
+      </svg>
+      <span
+        className={`absolute font-math text-[11px] font-bold leading-none ${
+          percent === 100 ? 'text-emerald-700' : 'text-slate-900'
+        }`}
+      >
+        {percent}%
+      </span>
+    </div>
+  );
+};
 
 export default function App() {
   const [subject, setSubject] = useState<SubjectId>('matematica');
@@ -150,6 +216,7 @@ export default function App() {
   const [replayNonce, setReplayNonce] = useState(0);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [showEnglishGuideModal, setShowEnglishGuideModal] = useState(false);
+  const [showTablesModal, setShowTablesModal] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [downloadTargetVideoId, setDownloadTargetVideoId] = useState<VideoId | null>(null);
   const [manualSpotlight, setManualSpotlight] = useState<SpotlightTarget>('none');
@@ -529,6 +596,16 @@ export default function App() {
               <FileText className="w-4 h-4 text-blue-700" />
               <span>{subject === 'ingles' ? 'Ver guía Inglés (PDF)' : 'Ver TP original (PDF)'}</span>
             </button>
+            {subject === 'matematica' && (
+              <button
+                type="button"
+                onClick={() => setShowTablesModal(true)}
+                className="inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 min-h-[44px] rounded-lg border border-blue-300 bg-blue-50 hover:bg-blue-100 text-xs sm:text-sm font-semibold text-blue-900 whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <Grid3X3 className="w-4 h-4 text-blue-700" />
+                <span>Tablas × (Machete)</span>
+              </button>
+            )}
             {subject === 'ingles' && (
               <button
                 type="button"
@@ -727,6 +804,13 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            {/* Quick Check Multiple-Choice Reinforcement for the Current Video */}
+            <QuickCheckCard
+              videoId={activeVideo.id}
+              videoLabel={activeVideo.shortLabel}
+              subject={subject}
+            />
           </section>
 
           {/* RIGHT ZONE: Constant Color Legend & Chapter / Scene Index */}
@@ -816,23 +900,35 @@ export default function App() {
                   const chapterScenes = flatScenes.filter(
                     (f) => f.chapter.id === chapter.id
                   );
+                  const chapterCompletedCount = chapterScenes.filter((f) =>
+                    completedSceneIds.includes(f.scene.id)
+                  ).length;
                   const pal = CHAPTER_PALETTE[chIdx % CHAPTER_PALETTE.length];
                   return (
                     <div
                       key={chapter.id}
                       className={`space-y-2.5 p-3.5 rounded-xl border ${pal.card}`}
                     >
-                      <div>
-                        <div className={`text-xs font-semibold ${pal.kicker}`}>
-                          {subject === 'ingles' ? 'Tema' : 'Capítulo'} {chapter.number} · {chapter.activityRef}
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="min-w-0">
+                          <div className={`text-xs font-semibold ${pal.kicker}`}>
+                            {subject === 'ingles' ? 'Tema' : 'Capítulo'} {chapter.number} · {chapter.activityRef}
+                          </div>
+                          <div
+                            className={`font-bold text-sm ${pal.title} ${
+                              subject === 'ingles' ? 'font-english-accessible' : 'font-display'
+                            }`}
+                          >
+                            {chapter.title}
+                          </div>
                         </div>
-                        <div
-                          className={`font-bold text-sm ${pal.title} ${
-                            subject === 'ingles' ? 'font-english-accessible' : 'font-display'
-                          }`}
-                        >
-                          {chapter.title}
-                        </div>
+
+                        <ChapterProgressRing
+                          completed={chapterCompletedCount}
+                          total={chapterScenes.length}
+                          strokeColor={pal.ringStroke}
+                          trackColor={pal.ringTrack}
+                        />
                       </div>
 
                       <div className="space-y-1.5">
@@ -1013,11 +1109,18 @@ export default function App() {
         </div>
       )}
 
-      {/* Floating Notepad persisted locally per topic */}
+      {/* Floating Notepad & Tablas Machete persisted locally per topic */}
       <FloatingNotepad
         topicId={activeVideo.id}
         topicLabel={activeVideo.shortLabel}
         topicTitle={activeVideo.title}
+        showTablesButton={subject === 'matematica'}
+        onOpenTables={() => setShowTablesModal(true)}
+      />
+
+      <MultiplicationCheatModal
+        open={showTablesModal}
+        onClose={() => setShowTablesModal(false)}
       />
 
       <DownloadCenterModal

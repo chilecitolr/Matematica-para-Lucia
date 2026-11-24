@@ -186,14 +186,28 @@ function renderVerticalFractionSvg(
   `;
 }
 
-function renderInlineMathWithFractionsSvg(
+function splitTopLevelEqualsSvg(expr: string): string[] {
+  const stages: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < expr.length; i++) {
+    const ch = expr[i];
+    if (ch === '(' || ch === '[') depth++;
+    else if (ch === ')' || ch === ']') depth = Math.max(0, depth - 1);
+    else if (ch === '=' && depth === 0) {
+      stages.push(expr.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  stages.push(expr.slice(start).trim());
+  return stages;
+}
+
+function measureAndBuildMathSvg(
   expr: string,
-  x: number,
-  cy: number,
   fontSize: number,
-  spotlight: SpotlightTarget = 'none',
-  anchor: 'start' | 'middle' | 'end' = 'start'
-): string {
+  spotlight: SpotlightTarget
+): { totalW: number; renderAt: (startX: number, cy: number) => string } {
   const fracRegex =
     /\(([^()]+)\)\s*\/\s*\(([^()]+)\)|\(([^()]+)\)\s*\/\s*([0-9a-zA-Z⁰¹²³⁴⁵⁶⁷⁸⁹]+)|([0-9a-zA-Z⁰¹²³⁴⁵⁶⁷⁸⁹]+)\/([0-9a-zA-Z⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g;
 
@@ -220,32 +234,108 @@ function renderInlineMathWithFractionsSvg(
     segments.push({ kind: 'text', value: val, w: val.length * fontSize * 0.56 });
   }
 
-  const hasFrac = segments.some((s) => s.kind === 'frac');
-  if (!hasFrac) {
-    const anchorAttr = anchor === 'middle' ? ' text-anchor="middle"' : anchor === 'end' ? ' text-anchor="end"' : '';
-    return `<text x="${x}" y="${cy + Math.round(fontSize * 0.32)}"${anchorAttr} font-size="${fontSize}">${renderColorMathTspans(expr, fontSize, spotlight)}</text>`;
+  const totalW = Math.max(16, segments.reduce((acc, s) => acc + s.w, 0));
+
+  return {
+    totalW,
+    renderAt: (startX: number, cy: number) => {
+      let cursorX = startX;
+      return segments
+        .map((seg) => {
+          if (seg.kind === 'text') {
+            const tx = cursorX;
+            cursorX += seg.w;
+            return `<text x="${Math.round(tx)}" y="${cy + Math.round(fontSize * 0.3)}" font-size="${fontSize}">${renderColorMathTspans(seg.value, fontSize, spotlight)}</text>`;
+          }
+          const cx = Math.round(cursorX + seg.w / 2);
+          const barW = Math.round(seg.w - fontSize * 0.35);
+          cursorX += seg.w;
+          return `
+            <text x="${cx}" y="${cy - Math.round(fontSize * 0.25)}" text-anchor="middle" font-size="${fracFs}">${renderColorMathTspans(seg.num, fracFs, spotlight)}</text>
+            <line x1="${cx - Math.round(barW / 2)}" y1="${cy}" x2="${cx + Math.round(barW / 2)}" y2="${cy}" stroke="#0F172A" stroke-width="2" stroke-linecap="round"/>
+            <text x="${cx}" y="${cy + Math.round(fontSize * 0.72)}" text-anchor="middle" font-size="${fracFs}">${renderColorMathTspans(seg.den, fracFs, spotlight)}</text>
+          `;
+        })
+        .join('');
+    },
+  };
+}
+
+function renderInlineMathWithFractionsSvg(
+  expr: string,
+  x: number,
+  cy: number,
+  fontSize: number,
+  spotlight: SpotlightTarget = 'none',
+  anchor: 'start' | 'middle' | 'end' = 'start'
+): string {
+  const stages = expr.includes('=') ? splitTopLevelEqualsSvg(expr) : [expr];
+
+  if (stages.length >= 2 && stages.every((s) => s.length > 0)) {
+    const padX = Math.max(8, Math.round(fontSize * 0.42));
+    const eqW = Math.round(fontSize * 1.45);
+    const pillH = Math.round(fontSize * 1.95);
+    const measured = stages.map((st) => measureAndBuildMathSvg(st, fontSize, spotlight));
+    const totalW =
+      measured.reduce((acc, m) => acc + m.totalW + padX * 2, 0) +
+      (stages.length - 1) * eqW;
+
+    let cursorX = anchor === 'middle' ? x - totalW / 2 : anchor === 'end' ? x - totalW : x;
+
+    return measured
+      .map((m, idx) => {
+        const isLast = idx === measured.length - 1;
+        const fill = isLast
+          ? '#ECFDF5'
+          : idx === 0
+            ? '#F0F9FF'
+            : idx === 1
+              ? '#FFFBEB'
+              : '#F5F3FF';
+        const stroke = isLast
+          ? '#34D399'
+          : idx === 0
+            ? '#7DD3FC'
+            : idx === 1
+              ? '#FCD34D'
+              : '#C4B5FD';
+        const sw = isLast ? 2 : 1.5;
+
+        const eqPrefix =
+          idx > 0
+            ? (() => {
+                const eqX = Math.round(cursorX + eqW * 0.5);
+                const svg = `
+                  <rect x="${Math.round(cursorX + 4)}" y="${cy - Math.round(fontSize * 0.65)}" width="${eqW - 8}" height="${Math.round(fontSize * 1.3)}" rx="6" fill="#E2E8F0"/>
+                  <text x="${eqX}" y="${cy + Math.round(fontSize * 0.32)}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${fontSize}" font-weight="700" fill="#0F172A">=</text>
+                `;
+                cursorX += eqW;
+                return svg;
+              })()
+            : '';
+
+        const boxX = Math.round(cursorX);
+        const boxW = Math.round(m.totalW + padX * 2);
+        const contentSvg = m.renderAt(cursorX + padX, cy);
+        cursorX += boxW;
+
+        return `
+          ${eqPrefix}
+          <rect x="${boxX}" y="${cy - Math.round(pillH / 2)}" width="${boxW}" height="${pillH}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+          ${contentSvg}
+        `;
+      })
+      .join('');
   }
 
-  const totalW = segments.reduce((acc, s) => acc + s.w, 0);
-  let cursorX = anchor === 'middle' ? x - totalW / 2 : anchor === 'end' ? x - totalW : x;
-
-  return segments
-    .map((seg) => {
-      if (seg.kind === 'text') {
-        const tx = cursorX;
-        cursorX += seg.w;
-        return `<text x="${Math.round(tx)}" y="${cy + Math.round(fontSize * 0.3)}" font-size="${fontSize}">${renderColorMathTspans(seg.value, fontSize, spotlight)}</text>`;
-      }
-      const cx = Math.round(cursorX + seg.w / 2);
-      const barW = Math.round(seg.w - fontSize * 0.35);
-      cursorX += seg.w;
-      return `
-        <text x="${cx}" y="${cy - Math.round(fontSize * 0.25)}" text-anchor="middle" font-size="${fracFs}">${renderColorMathTspans(seg.num, fracFs, spotlight)}</text>
-        <line x1="${cx - Math.round(barW / 2)}" y1="${cy}" x2="${cx + Math.round(barW / 2)}" y2="${cy}" stroke="#0F172A" stroke-width="2" stroke-linecap="round"/>
-        <text x="${cx}" y="${cy + Math.round(fontSize * 0.72)}" text-anchor="middle" font-size="${fracFs}">${renderColorMathTspans(seg.den, fracFs, spotlight)}</text>
-      `;
-    })
-    .join('');
+  const single = measureAndBuildMathSvg(expr, fontSize, spotlight);
+  const startX =
+    anchor === 'middle'
+      ? x - single.totalW / 2
+      : anchor === 'end'
+        ? x - single.totalW
+        : x;
+  return single.renderAt(startX, cy);
 }
 
 export interface FramePlan {
@@ -977,14 +1067,37 @@ function renderDiagramSvg(
           const y = 224 + idx * (rowH + 6);
           const cy = y + Math.round(rowH * 0.5);
           const isNewest = idx === visibleLines.length - 1;
+          const isResult =
+            Boolean(line.focus) ||
+            (line.label || '').toLowerCase().includes('resultado') ||
+            idx === d.lines.length - 1;
+          const stepFill = isResult
+            ? '#ECFDF5'
+            : idx === 0
+              ? '#F0F9FF'
+              : idx === 1
+                ? '#FFFBEB'
+                : idx === 2
+                  ? '#F5F3FF'
+                  : '#EEF2FF';
+          const stepStroke = isResult
+            ? '#10B981'
+            : idx === 0
+              ? '#0EA5E9'
+              : idx === 1
+                ? '#F59E0B'
+                : idx === 2
+                  ? '#8B5CF6'
+                  : '#6366F1';
           return `
-            <rect x="88" y="${y}" width="1104" height="${rowH}" rx="12" fill="${line.focus || isNewest ? '#EFF6FF' : '#F8FAFC'}" stroke="${line.focus || isNewest ? '#3B82F6' : '#E2E8F0'}" stroke-width="${isNewest ? '2.5' : '1.5'}"/>
+            <rect x="88" y="${y}" width="1104" height="${rowH}" rx="12" fill="${stepFill}" stroke="${isNewest ? '#D97706' : stepStroke}" stroke-width="${isNewest ? '3' : '1.8'}"/>
+            <rect x="88" y="${y}" width="8" height="${rowH}" rx="4" fill="${stepStroke}"/>
             ${
               line.label
-                ? `<text x="114" y="${cy + 6}" font-family="Noto Sans, sans-serif" font-size="19" font-weight="700" fill="#334155">${esc(line.label)}</text>`
+                ? `<text x="114" y="${cy + 6}" font-family="Noto Sans, sans-serif" font-size="19" font-weight="700" fill="#1E293B">${esc(line.label)}</text>`
                 : ''
             }
-            ${renderInlineMathWithFractionsSvg(line.math, line.label ? 208 : 114, cy, 21, isNewest ? sp : 'none', 'start')}
+            ${renderInlineMathWithFractionsSvg(line.math, line.label ? 216 : 116, cy, 20, isNewest ? sp : 'none', 'start')}
             ${
               line.note
                 ? `<text x="1168" y="${cy + 6}" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="16" fill="#475569">${esc(line.note)}</text>`

@@ -40,11 +40,58 @@ interface ColorMathProps {
   className?: string;
   highlightTarget?: SpotlightTarget;
   activeTerms?: string[];
+  progressive?: boolean;
 }
 
 type MathSegment =
   | { kind: 'text'; value: string }
   | { kind: 'frac'; num: string; den: string };
+
+function splitEquationClauses(expr: string): Array<{ kind: 'clause' | 'joiner'; value: string }> {
+  const parts = expr.split(/(\s{2,}y\s{2,}|\s+\|\s+)/);
+  return parts
+    .filter((p) => p.length > 0)
+    .map((p) => ({
+      kind: /^(\s{2,}y\s{2,}|\s+\|\s+)$/.test(p) ? 'joiner' : 'clause',
+      value: p,
+    }));
+}
+
+function splitTopLevelEquals(clause: string): string[] {
+  const stages: string[] = [];
+  let depth = 0;
+  let start = 0;
+
+  for (let i = 0; i < clause.length; i++) {
+    const ch = clause[i];
+    if (ch === '(' || ch === '[') {
+      depth++;
+    } else if (ch === ')' || ch === ']') {
+      depth = Math.max(0, depth - 1);
+    } else if (ch === '=' && depth === 0) {
+      stages.push(clause.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  stages.push(clause.slice(start).trim());
+  return stages;
+}
+
+function getStageBadgeClass(stageIdx: number, totalStages: number): string {
+  if (stageIdx === totalStages - 1) {
+    return 'bg-emerald-50 border-2 border-emerald-400 rounded-xl px-2 py-0.5 shadow-xs';
+  }
+  if (stageIdx === 0) {
+    return 'bg-sky-50/90 border border-sky-300 rounded-xl px-2 py-0.5';
+  }
+  if (stageIdx === 1) {
+    return 'bg-amber-50/95 border border-amber-300 rounded-xl px-2 py-0.5';
+  }
+  if (stageIdx === 2) {
+    return 'bg-violet-50/95 border border-violet-300 rounded-xl px-2 py-0.5';
+  }
+  return 'bg-rose-50/90 border border-rose-300 rounded-xl px-2 py-0.5';
+}
 
 function splitMathSegments(expr: string): MathSegment[] {
   const fracRegex =
@@ -241,12 +288,80 @@ const ColorMathTokens: React.FC<{
   );
 };
 
+const renderMathSegments = (
+  subExpr: string,
+  highlightTarget: SpotlightTarget,
+  activeTerms: string[],
+  termSet: Set<string>,
+  hiNum: boolean,
+  hiDen: boolean
+) => {
+  const segments = splitMathSegments(subExpr);
+  return segments.map((seg, idx) => {
+    if (seg.kind === 'text') {
+      return (
+        <ColorMathTokens
+          key={idx}
+          expr={seg.value}
+          highlightTarget={highlightTarget}
+          activeTerms={activeTerms}
+        />
+      );
+    }
+
+    const fracKey = `${seg.num.trim()}/${seg.den.trim()}`.toLowerCase();
+    const fracHi = termSet.has(fracKey);
+
+    return (
+      <span
+        key={idx}
+        className={`inline-flex flex-col items-center justify-center align-middle mx-1 leading-none transition-all duration-300 ${
+          fracHi
+            ? 'scale-115 bg-amber-100 ring-2 ring-amber-500 rounded-lg px-1.5 py-1 shadow-sm'
+            : ''
+        }`}
+      >
+        <span
+          className={`px-1.5 pb-[2px] text-[0.8em] leading-tight transition-transform duration-300 ${
+            hiNum && !fracHi
+              ? 'scale-115 bg-blue-100 ring-2 ring-blue-400 rounded-md py-0.5 mb-0.5'
+              : ''
+          }`}
+        >
+          <ColorMathTokens
+            expr={seg.num}
+            highlightTarget={highlightTarget}
+            inFraction
+            activeTerms={fracHi ? [] : activeTerms}
+          />
+        </span>
+        <span className="w-full min-w-[1.3em] h-[2px] bg-slate-800 rounded-full" />
+        <span
+          className={`px-1.5 pt-[3px] text-[0.8em] leading-tight transition-transform duration-300 ${
+            hiDen && !fracHi
+              ? 'scale-115 bg-blue-100 ring-2 ring-blue-400 rounded-md py-0.5 mt-0.5'
+              : ''
+          }`}
+        >
+          <ColorMathTokens
+            expr={seg.den}
+            highlightTarget={highlightTarget}
+            inFraction
+            activeTerms={fracHi ? [] : activeTerms}
+          />
+        </span>
+      </span>
+    );
+  });
+};
+
 export const ColorMath: React.FC<ColorMathProps> = ({
   expr,
   size = 'lg',
   className = '',
   highlightTarget = 'none',
   activeTerms = [],
+  progressive = true,
 }) => {
   const sizeClasses: Record<NonNullable<ColorMathProps['size']>, string> = {
     sm: 'text-sm sm:text-base',
@@ -256,71 +371,72 @@ export const ColorMath: React.FC<ColorMathProps> = ({
     '2xl': 'text-2xl sm:text-3xl md:text-5xl',
   };
 
-  const segments = splitMathSegments(expr);
   const hiNum = highlightTarget === 'numerador' || highlightTarget === 'num';
   const hiDen = highlightTarget === 'denominador' || highlightTarget === 'num';
   const termSet = new Set(activeTerms.map((t) => t.toLowerCase()));
+
+  const clauses = splitEquationClauses(expr);
+  const hasAnyEquals = progressive && expr.includes('=');
+
+  if (hasAnyEquals) {
+    return (
+      <span
+        className={`font-math inline-flex flex-wrap items-center gap-y-1.5 tracking-wide leading-relaxed ${sizeClasses[size]} ${className}`}
+      >
+        {clauses.map((cl, cIdx) => {
+          if (cl.kind === 'joiner') {
+            return (
+              <span key={cIdx} className="mx-2 text-slate-500 font-sans text-[0.8em] font-semibold">
+                {cl.value.trim()}
+              </span>
+            );
+          }
+          const stages = splitTopLevelEquals(cl.value);
+          if (stages.length < 2 || stages.some((s) => !s)) {
+            return (
+              <React.Fragment key={cIdx}>
+                {renderMathSegments(cl.value, highlightTarget, activeTerms, termSet, hiNum, hiDen)}
+              </React.Fragment>
+            );
+          }
+
+          return (
+            <span key={cIdx} className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
+              {stages.map((st, sIdx) => (
+                <React.Fragment key={sIdx}>
+                  {sIdx > 0 && (
+                    <span
+                      className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-md font-bold text-[0.85em] transition-all duration-300 ${
+                        termSet.has('=')
+                          ? 'scale-125 bg-amber-200 ring-2 ring-amber-500 text-slate-950'
+                          : 'bg-slate-200/80 text-slate-800'
+                      }`}
+                    >
+                      =
+                    </span>
+                  )}
+                  <span
+                    className={`inline-flex flex-wrap items-center ${getStageBadgeClass(
+                      sIdx,
+                      stages.length
+                    )}`}
+                  >
+                    {renderMathSegments(st, highlightTarget, activeTerms, termSet, hiNum, hiDen)}
+                  </span>
+                </React.Fragment>
+              ))}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }
 
   return (
     <span
       className={`font-math inline-flex flex-wrap items-center tracking-wide leading-relaxed ${sizeClasses[size]} ${className}`}
     >
-      {segments.map((seg, idx) => {
-        if (seg.kind === 'text') {
-          return (
-            <ColorMathTokens
-              key={idx}
-              expr={seg.value}
-              highlightTarget={highlightTarget}
-              activeTerms={activeTerms}
-            />
-          );
-        }
-
-        const fracKey = `${seg.num.trim()}/${seg.den.trim()}`.toLowerCase();
-        const fracHi = termSet.has(fracKey);
-
-        return (
-          <span
-            key={idx}
-            className={`inline-flex flex-col items-center justify-center align-middle mx-1 leading-none transition-all duration-300 ${
-              fracHi
-                ? 'scale-115 bg-amber-100 ring-2 ring-amber-500 rounded-lg px-1.5 py-1 shadow-sm'
-                : ''
-            }`}
-          >
-            <span
-              className={`px-1.5 pb-[2px] text-[0.8em] leading-tight transition-transform duration-300 ${
-                hiNum && !fracHi
-                  ? 'scale-115 bg-blue-100 ring-2 ring-blue-400 rounded-md py-0.5 mb-0.5'
-                  : ''
-              }`}
-            >
-              <ColorMathTokens
-                expr={seg.num}
-                highlightTarget={highlightTarget}
-                inFraction
-                activeTerms={fracHi ? [] : activeTerms}
-              />
-            </span>
-            <span className="w-full min-w-[1.3em] h-[2px] bg-slate-800 rounded-full" />
-            <span
-              className={`px-1.5 pt-[3px] text-[0.8em] leading-tight transition-transform duration-300 ${
-                hiDen && !fracHi
-                  ? 'scale-115 bg-blue-100 ring-2 ring-blue-400 rounded-md py-0.5 mt-0.5'
-                  : ''
-              }`}
-            >
-              <ColorMathTokens
-                expr={seg.den}
-                highlightTarget={highlightTarget}
-                inFraction
-                activeTerms={fracHi ? [] : activeTerms}
-              />
-            </span>
-          </span>
-        );
-      })}
+      {renderMathSegments(expr, highlightTarget, activeTerms, termSet, hiNum, hiDen)}
     </span>
   );
 };

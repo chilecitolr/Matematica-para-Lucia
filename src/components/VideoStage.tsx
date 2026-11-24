@@ -1357,6 +1357,37 @@ const DiagramRenderer: React.FC<{
         : [];
       const hasRowStepMatch = matchedIndices.length > 0;
 
+      const rowPalette = (idx: number, total: number, isResultRow: boolean) => {
+        if (isResultRow || idx === total - 1) {
+          return {
+            row: 'bg-emerald-50/75 border-emerald-300 border-l-4 border-l-emerald-500',
+            label: 'text-emerald-800 font-bold',
+          };
+        }
+        if (idx === 0) {
+          return {
+            row: 'bg-sky-50/70 border-sky-200 border-l-4 border-l-sky-500',
+            label: 'text-sky-800 font-bold',
+          };
+        }
+        if (idx === 1) {
+          return {
+            row: 'bg-amber-50/60 border-amber-200 border-l-4 border-l-amber-500',
+            label: 'text-amber-800 font-bold',
+          };
+        }
+        if (idx === 2) {
+          return {
+            row: 'bg-violet-50/65 border-violet-200 border-l-4 border-l-violet-500',
+            label: 'text-violet-800 font-bold',
+          };
+        }
+        return {
+          row: 'bg-indigo-50/60 border-indigo-200 border-l-4 border-l-indigo-500',
+          label: 'text-indigo-800 font-bold',
+        };
+      };
+
       return (
         <div className="w-full max-w-3xl space-y-2 sm:space-y-2.5">
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 sm:mb-2">
@@ -1365,6 +1396,10 @@ const DiagramRenderer: React.FC<{
           {diagram.lines.map((line, idx) => {
             const isStepRow = hasRowStepMatch && matchedIndices.includes(idx);
             const rowTerms = hasRowStepMatch ? (isStepRow ? activeTerms : []) : activeTerms;
+            const isResultRow =
+              Boolean(line.focus) ||
+              (line.label || '').toLowerCase().includes('resultado');
+            const pal = rowPalette(idx, diagram.lines.length, isResultRow);
             return (
               <motion.div
                 key={idx}
@@ -1373,19 +1408,17 @@ const DiagramRenderer: React.FC<{
                 transition={{ delay: idx * 0.1 }}
                 className={`flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-1.5 sm:gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl border transition-all duration-300 ${
                   isStepRow
-                    ? 'bg-amber-50/90 border-amber-400 ring-2 ring-amber-300 scale-[1.015] shadow-sm'
-                    : line.focus
-                      ? 'bg-blue-50/70 border-blue-200'
-                      : hasRowStepMatch
-                        ? 'bg-slate-50/50 border-slate-200 opacity-70'
-                        : 'bg-slate-50/70 border-slate-200'
+                    ? 'bg-amber-50/95 border-amber-400 border-l-4 border-l-amber-500 ring-2 ring-amber-300 scale-[1.015] shadow-sm'
+                    : hasRowStepMatch
+                      ? `${pal.row} opacity-75`
+                      : pal.row
                 }`}
               >
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                   {line.label && (
                     <span
-                      className={`font-semibold text-xs sm:text-sm min-w-[2.4rem] sm:min-w-[3.2rem] shrink-0 ${
-                        isStepRow ? 'text-amber-900 font-bold' : 'text-slate-700'
+                      className={`text-xs sm:text-sm min-w-[2.4rem] sm:min-w-[3.2rem] shrink-0 ${
+                        isStepRow ? 'text-amber-900 font-bold' : pal.label
                       }`}
                     >
                       {line.label}
@@ -1788,26 +1821,58 @@ const PracticeChallengeView: React.FC<{
 };
 
 function renderProseWithFractions(text: string): React.ReactNode {
-  const parts = text.split(/([+-]?\d+\/\d+)/g);
-  return parts.map((part, idx) => {
-    const m = /^([+-]?)(\d+)\/(\d+)$/.exec(part);
-    if (!m) {
-      return <span key={idx}>{part}</span>;
-    }
-    const [, sign, num, den] = m;
+  const stepPillColors = [
+    'bg-sky-50 border border-sky-200 rounded-lg px-2 py-0.5',
+    'bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5',
+    'bg-violet-50 border border-violet-200 rounded-lg px-2 py-0.5',
+  ];
+
+  const renderFractions = (chunk: string, keyPrefix: string) => {
+    const parts = chunk.split(/([+-]?\d+\/\d+)/g);
+    return parts.map((part, idx) => {
+      const m = /^([+-]?)(\d+)\/(\d+)$/.exec(part);
+      if (!m) {
+        return <span key={`${keyPrefix}-${idx}`}>{part}</span>;
+      }
+      const [, sign, num, den] = m;
+      return (
+        <span key={`${keyPrefix}-${idx}`} className="inline-flex items-center mx-0.5 align-middle font-math">
+          {sign && (
+            <span className={`font-bold mr-0.5 ${sign === '-' ? 'text-red-600' : 'text-slate-700'}`}>
+              {sign === '-' ? '−' : '+'}
+            </span>
+          )}
+          <span className="inline-flex flex-col items-center justify-center leading-none text-[0.82em]">
+            <span className="text-blue-700 font-semibold px-1 pb-[1px]">{num}</span>
+            <span className="w-full h-[1.5px] bg-slate-800 rounded-full" />
+            <span className="text-blue-700 font-semibold px-1 pt-[2px]">{den}</span>
+          </span>
+        </span>
+      );
+    });
+  };
+
+  if (!text.includes('=')) {
+    return renderFractions(text, 'plain');
+  }
+
+  const eqSegments = text.split(/\s*=\s*/);
+  return eqSegments.map((seg, idx) => {
+    const isLast = idx === eqSegments.length - 1;
+    const cls = isLast
+      ? 'bg-emerald-50 border border-emerald-400 rounded-lg px-2 py-0.5 font-semibold text-emerald-950'
+      : stepPillColors[idx % stepPillColors.length];
     return (
-      <span key={idx} className="inline-flex items-center mx-0.5 align-middle font-math">
-        {sign && (
-          <span className={`font-bold mr-0.5 ${sign === '-' ? 'text-red-600' : 'text-slate-700'}`}>
-            {sign === '-' ? '−' : '+'}
+      <React.Fragment key={idx}>
+        {idx > 0 && (
+          <span className="mx-1 px-1.5 py-0.5 rounded bg-slate-200 text-slate-800 font-bold text-xs">
+            =
           </span>
         )}
-        <span className="inline-flex flex-col items-center justify-center leading-none text-[0.82em]">
-          <span className="text-blue-700 font-semibold px-1 pb-[1px]">{num}</span>
-          <span className="w-full h-[1.5px] bg-slate-800 rounded-full" />
-          <span className="text-blue-700 font-semibold px-1 pt-[2px]">{den}</span>
+        <span className={`inline-flex flex-wrap items-center gap-x-1 ${cls}`}>
+          {renderFractions(seg, `eq-${idx}`)}
         </span>
-      </span>
+      </React.Fragment>
     );
   });
 }

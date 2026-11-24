@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { StickyNote, Trash2, X, Check } from 'lucide-react';
+import { Grid3X3, StickyNote, Trash2, X, Check } from 'lucide-react';
 import type { VideoId } from '../types/lesson';
 
 interface FloatingNotepadProps {
   topicId: VideoId;
   topicLabel: string;
   topicTitle: string;
+  showTablesButton?: boolean;
+  onOpenTables?: () => void;
 }
 
 const STORAGE_KEY = 'lucia_notes_by_topic_v1';
@@ -26,6 +28,8 @@ export const FloatingNotepad: React.FC<FloatingNotepadProps> = ({
   topicId,
   topicLabel,
   topicTitle,
+  showTablesButton = false,
+  onOpenTables,
 }) => {
   const [open, setOpen] = useState(false);
   const [notesByTopic, setNotesByTopic] = useState<Record<string, string>>(() => loadNotesMap());
@@ -129,21 +133,35 @@ export const FloatingNotepad: React.FC<FloatingNotepadProps> = ({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="inline-flex items-center gap-2 px-4 py-3 min-h-[46px] rounded-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-display text-sm font-bold border-2 border-amber-700 shadow-lg transition-transform active:scale-95 cursor-pointer"
-      >
-        <StickyNote className="w-4 h-4 shrink-0" />
-        <span>Mis apuntes</span>
-        {hasNote && (
-          <span
-            className="w-2.5 h-2.5 rounded-full bg-blue-700 ring-2 ring-white"
-            title="Tenés apuntes guardados en este tema"
-          />
+      <div className="flex items-center gap-2">
+        {showTablesButton && onOpenTables && (
+          <button
+            type="button"
+            onClick={onOpenTables}
+            className="inline-flex items-center gap-1.5 px-3.5 py-3 min-h-[46px] rounded-full bg-blue-700 hover:bg-blue-800 text-white font-display text-xs sm:text-sm font-bold border-2 border-blue-950 shadow-lg transition-transform active:scale-95 cursor-pointer"
+            title="Abrir machete con las tablas de multiplicar"
+          >
+            <Grid3X3 className="w-4 h-4 shrink-0" />
+            <span>Tablas ×</span>
+          </button>
         )}
-      </button>
+
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="inline-flex items-center gap-2 px-4 py-3 min-h-[46px] rounded-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-display text-xs sm:text-sm font-bold border-2 border-amber-700 shadow-lg transition-transform active:scale-95 cursor-pointer"
+        >
+          <StickyNote className="w-4 h-4 shrink-0" />
+          <span>Mis apuntes</span>
+          {hasNote && (
+            <span
+              className="w-2.5 h-2.5 rounded-full bg-blue-700 ring-2 ring-white"
+              title="Tenés apuntes guardados en este tema"
+            />
+          )}
+        </button>
+      </div>
     </div>
   );
 };
