@@ -1102,7 +1102,7 @@ export default function App() {
                 Este material está adaptado para Lucía.
               </div>
               <div className="font-display text-sm font-semibold bg-[#f50d88] text-[#f4f5f6]">
-                Con amor, su papá!!
+                Con mucho Amor, tu papi... Ariel!!!
               </div>
             </div>
           </aside>
